@@ -1,0 +1,17 @@
+{
+  "name": "Status Page",
+  "short_name": "Status",
+  "description": "Real-time service status monitor",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07070e",
+  "theme_color": "#7c5cfc",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

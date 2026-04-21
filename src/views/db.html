@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Database — Status Page</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:      #07070e;
+    --surface: rgba(255,255,255,0.04);
+    --surface2:rgba(255,255,255,0.07);
+    --border:  rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --txt:     #e8e8f0;
+    --txt2:    #8888aa;
+    --txt3:    #5a5a78;
+    --accent:  #7c5cfc;
+    --accent2: #5b3de8;
+    --green:   #22c55e;
+    --red:     #ef4444;
+    --yellow:  #f59e0b;
+    --gray:    #3a3a52;
+    --sidebar: 240px;
+  }
+  html, body { height: 100%; font-size: 14px; }
+  body { background: var(--bg); color: var(--txt); font-family: 'Inter', system-ui, sans-serif; display: flex; overflow: hidden; }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 3px; }
+
+  /* Sidebar */
+  .sidebar { width: var(--sidebar); min-width: var(--sidebar); height: 100vh; background: rgba(0,0,0,.35); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .sidebar-top { padding: 18px 16px 12px; border-bottom: 1px solid var(--border); }
+  .back-link { display: flex; align-items: center; gap: 7px; color: var(--txt2); text-decoration: none; font-size: .78rem; margin-bottom: 14px; transition: color .2s; }
+  .back-link:hover { color: var(--txt); }
+  .sb-burger { background: none; border: none; cursor: pointer; color: var(--txt2); padding: 5px 2px; margin-bottom: 10px; border-radius: 6px; display: flex; align-items: center; gap: 8px; font-size: .78rem; transition: color .2s; }
+  .sb-burger:hover { color: var(--txt); }
+  /* ── Nav drawer ── */
+  .nav-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.6); backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .nav-overlay.open { opacity: 1; pointer-events: all; }
+  .nav-drawer { position: fixed; top: 0; left: 0; bottom: 0; z-index: 201; width: 260px; background: #0d0d1e; border-right: 1px solid var(--border2); display: flex; flex-direction: column; transform: translateX(-100%); transition: transform .28s cubic-bezier(.4,0,.2,1); }
+  .nav-drawer.open { transform: translateX(0); }
+  .nav-drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 20px 20px 16px; border-bottom: 1px solid var(--border); }
+  .nav-drawer-head strong { font-size: .95rem; }
+  .nav-close { background: none; border: none; cursor: pointer; color: var(--txt2); font-size: 1.25rem; line-height: 1; padding: 2px 6px; border-radius: 6px; transition: color .2s; }
+  .nav-close:hover { color: var(--txt); }
+  .nav-links { padding: 12px 8px; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+  .nav-footer { padding: 12px 8px; border-top: 1px solid var(--border); }
+  .nav-logout { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border-radius: 10px; background: none; border: none; color: var(--txt3); font-size: .88rem; font-weight: 500; cursor: pointer; transition: background .15s, color .15s; }
+  .nav-logout:hover { background: rgba(239,68,68,.1); color: #f87171; }
+  .nav-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; color: var(--txt2); text-decoration: none; font-size: .88rem; font-weight: 500; transition: background .15s, color .15s; }
+  .nav-link:hover { background: var(--surface2); color: var(--txt); }
+  .nav-link.active { background: rgba(124,92,252,.15); color: #a78bfa; }
+  .db-title { font-size: 1rem; font-weight: 700; margin-bottom: 4px; }
+  .db-host  { font-size: .72rem; color: var(--txt3); font-family: monospace; }
+  .sidebar-search { margin: 10px 12px 0; }
+  .sidebar-search input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--txt); font-size: .78rem; padding: 6px 10px; outline: none; transition: border-color .2s; }
+  .sidebar-search input:focus { border-color: var(--accent); }
+  .table-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+  .table-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; cursor: pointer; transition: background .15s; border-left: 2px solid transparent; }
+  .table-item:hover  { background: var(--surface); }
+  .table-item.active { background: var(--surface2); border-left-color: var(--accent); }
+  .table-item-name { font-size: .82rem; font-weight: 500; }
+  .table-item-rows { font-size: .7rem; color: var(--txt3); background: var(--surface2); padding: 1px 7px; border-radius: 999px; }
+  .sidebar-footer { padding: 12px 16px; border-top: 1px solid var(--border); font-size: .72rem; color: var(--txt3); }
+
+  /* Main */
+  .db-main { flex: 1; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .db-topbar { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 14px; flex-shrink: 0; background: rgba(0,0,0,.2); }
+  .db-topbar h2 { font-size: .95rem; font-weight: 600; flex: 1; }
+  .tab-row { display: flex; gap: 2px; }
+  .db-tab { padding: 6px 14px; border-radius: 8px; border: none; background: none; color: var(--txt2); font-size: .8rem; cursor: pointer; transition: all .15s; }
+  .db-tab:hover  { background: var(--surface2); color: var(--txt); }
+  .db-tab.active { background: var(--accent); color: #fff; }
+  .btn-trunc { padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(239,68,68,.3); background: rgba(239,68,68,.08); color: #f87171; font-size: .78rem; cursor: pointer; transition: all .2s; }
+  .btn-trunc:hover { background: rgba(239,68,68,.16); border-color: rgba(239,68,68,.5); }
+  .db-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+  /* Browse */
+  #tab-browse { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  .data-table-wrap { flex: 1; overflow: auto; }
+  table.data-table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+  table.data-table th { background: rgba(0,0,0,.3); color: var(--txt2); font-weight: 600; padding: 9px 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 2; }
+  table.data-table td { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: top; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--txt); }
+  table.data-table tr:hover td { background: var(--surface); }
+  table.data-table td.null-val { color: var(--txt3); font-style: italic; }
+  .btn-row-del { background: none; border: none; color: var(--txt3); cursor: pointer; padding: 3px 6px; border-radius: 5px; font-size: .75rem; transition: all .15s; }
+  .btn-row-del:hover { color: var(--red); background: rgba(239,68,68,.1); }
+  .pagination { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-top: 1px solid var(--border); flex-shrink: 0; background: rgba(0,0,0,.2); }
+  .pag-info { font-size: .76rem; color: var(--txt2); }
+  .pag-btns { display: flex; gap: 4px; }
+  .pag-btn { padding: 4px 12px; border-radius: 7px; border: 1px solid var(--border); background: none; color: var(--txt2); font-size: .76rem; cursor: pointer; transition: all .15s; }
+  .pag-btn:hover:not(:disabled) { border-color: var(--border2); color: var(--txt); }
+  .pag-btn:disabled { opacity: .35; cursor: default; }
+  .pag-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* Structure */
+  #tab-structure { flex: 1; overflow: auto; display: none; flex-direction: column; padding: 16px 20px; gap: 20px; }
+  table.struct-table { width: 100%; border-collapse: collapse; font-size: .79rem; }
+  table.struct-table th { background: rgba(0,0,0,.3); color: var(--txt2); font-weight: 600; padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  table.struct-table td { padding: 7px 12px; border-bottom: 1px solid rgba(255,255,255,.04); color: var(--txt); font-family: monospace; }
+  table.struct-table tr:hover td { background: var(--surface); }
+  .key-badge { font-size: .68rem; padding: 1px 7px; border-radius: 999px; font-weight: 600; }
+  .key-pri { background: rgba(124,92,252,.2); color: #a78bfa; }
+  .key-uni { background: rgba(6,182,212,.15); color: #67e8f9; }
+  .key-mul { background: rgba(245,158,11,.15); color: #fcd34d; }
+  .create-sql-wrap { background: rgba(0,0,0,.35); border: 1px solid var(--border); border-radius: 10px; padding: 16px; overflow: auto; }
+  .create-sql-wrap pre { font-family: monospace; font-size: .77rem; color: var(--txt2); white-space: pre-wrap; line-height: 1.6; }
+  .struct-section-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--txt3); margin-bottom: 8px; }
+
+  /* SQL runner */
+  .sql-runner { border-top: 1px solid var(--border); flex-shrink: 0; display: flex; flex-direction: column; background: rgba(0,0,0,.25); }
+  .sql-runner-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; border-bottom: 1px solid var(--border); }
+  .sql-runner-header span { font-size: .77rem; font-weight: 600; color: var(--txt2); display: flex; align-items: center; gap: 7px; }
+  .sql-runner-header span::before { content: ''; display: block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  .btn-run { padding: 5px 14px; border-radius: 7px; border: none; background: var(--accent); color: #fff; font-size: .78rem; font-weight: 600; cursor: pointer; transition: background .2s; }
+  .btn-run:hover { background: var(--accent2); }
+  .sql-input { width: 100%; min-height: 68px; max-height: 140px; background: transparent; border: none; color: var(--txt); font-family: monospace; font-size: .79rem; padding: 10px 16px; outline: none; resize: vertical; line-height: 1.6; }
+  .sql-results { border-top: 1px solid var(--border); max-height: 200px; overflow: auto; }
+  .sql-results-inner { padding: 10px 16px; }
+  .result-meta { font-size: .74rem; color: var(--txt3); margin-bottom: 8px; }
+  .result-meta .ok  { color: var(--green); }
+  .result-meta .err { color: var(--red); }
+  table.result-table { width: 100%; border-collapse: collapse; font-size: .76rem; }
+  table.result-table th { color: var(--txt2); font-weight: 600; padding: 5px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.result-table td { padding: 5px 10px; border-bottom: 1px solid rgba(255,255,255,.03); color: var(--txt); font-family: monospace; white-space: nowrap; }
+  table.result-table tr:hover td { background: var(--surface); }
+
+  /* Misc */
+  .db-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--txt3); gap: 10px; }
+  .db-empty svg { opacity: .2; }
+  .db-empty p { font-size: .9rem; color: var(--txt2); }
+  .db-empty small { font-size: .78rem; }
+  .loading { text-align: center; padding: 24px; color: var(--txt3); font-size: .82rem; }
+
+  #toast2 { position: fixed; bottom: 20px; right: 20px; z-index: 200; background: #1c1c38; border: 1px solid var(--border2); border-radius: 10px; padding: 10px 18px; font-size: .82rem; color: var(--txt); transform: translateY(16px); opacity: 0; transition: all .3s; pointer-events: none; }
+  #toast2.show { transform: translateY(0); opacity: 1; }
+  #toast2.ok  { border-color: rgba(34,197,94,.35); }
+  #toast2.err { border-color: rgba(239,68,68,.35); color: #fca5a5; }
+</style>
+</head>
+<body>
+
+<!-- Nav drawer -->
+<div class="nav-overlay" id="nav-overlay" onclick="closeNav()"></div>
+<nav class="nav-drawer" id="nav-drawer">
+  <div class="nav-drawer-head">
+    <strong>Navigation</strong>
+    <button class="nav-close" onclick="closeNav()">×</button>
+  </div>
+  <div class="nav-links">
+    <a href="/" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="2.5" fill="currentColor"/></svg>
+      Status Page
+    </a>
+    <a href="/admin" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.5L2 4.5v3c0 3.3 2.6 6.4 6 7 3.4-.6 6-3.7 6-7v-3L8 1.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+      Admin
+    </a>
+    <a href="/endpoints" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Endpoints
+    </a>
+    <a href="/db" class="nav-link active">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><ellipse cx="8" cy="4.5" rx="5" ry="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 4.5v3c0 1.1 2.24 2 5 2s5-.9 5-2v-3" stroke="currentColor" stroke-width="1.5"/><path d="M3 7.5v3c0 1.1 2.24 2 5 2s5-.9 5-2v-3" stroke="currentColor" stroke-width="1.5"/></svg>
+      Database
+    </a>
+  </div>
+  <div class="nav-footer">
+    <form method="POST" action="/logout">
+      <button type="submit" class="nav-logout">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M10 11l3-3-3-3M13 8H6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Sign out
+      </button>
+    </form>
+  </div>
+</nav>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-top">
+    <button class="sb-burger" onclick="toggleNav()">
+      <svg width="18" height="14" viewBox="0 0 18 14" fill="none"><path d="M0 1h18M0 7h18M0 13h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      Menu
+    </button>
+    <div class="db-title">Database</div>
+    <div class="db-host" id="db-host">Connecting…</div>
+  </div>
+  <div class="sidebar-search">
+    <input type="text" id="table-search" placeholder="Filter tables…" oninput="filterTables(this.value)">
+  </div>
+  <div class="table-list" id="table-list"><div class="loading">Loading…</div></div>
+  <div class="sidebar-footer" id="sidebar-footer"></div>
+</aside>
+
+<!-- Main -->
+<div class="db-main">
+  <div class="db-topbar">
+    <h2 id="topbar-title" style="color:var(--txt3)">Select a table</h2>
+    <div class="tab-row" id="tab-row" style="display:none">
+      <button class="db-tab active" data-tab="browse"    onclick="switchTab('browse')">Browse</button>
+      <button class="db-tab"        data-tab="structure" onclick="switchTab('structure')">Structure</button>
+    </div>
+    <button class="btn-trunc" id="btn-trunc" style="display:none" onclick="truncateTable()">Truncate</button>
+  </div>
+
+  <div class="db-content">
+    <!-- Browse tab -->
+    <div id="tab-browse" style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+      <div class="db-empty" id="browse-empty">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+          <ellipse cx="24" cy="12" rx="16" ry="6" stroke="currentColor" stroke-width="2"/>
+          <path d="M8 12v12c0 3.3 7.2 6 16 6s16-2.7 16-6V12" stroke="currentColor" stroke-width="2"/>
+          <path d="M8 24v12c0 3.3 7.2 6 16 6s16-2.7 16-6V24" stroke="currentColor" stroke-width="2"/>
+        </svg>
+        <p>Select a table from the sidebar</p>
+        <small>Browse, edit, and query your data</small>
+      </div>
+      <div id="browse-content" style="display:none;flex:1;overflow:hidden;display:flex;flex-direction:column">
+        <div class="data-table-wrap"><table class="data-table" id="data-table"></table></div>
+        <div class="pagination" id="pagination"></div>
+      </div>
+    </div>
+
+    <!-- Structure tab -->
+    <div id="tab-structure" style="display:none;flex:1;overflow:auto;padding:16px 20px;gap:20px;flex-direction:column"></div>
+  </div>
+
+  <!-- SQL Runner -->
+  <div class="sql-runner">
+    <div class="sql-runner-header">
+      <span>SQL Query</span>
+      <button class="btn-run" onclick="runSQL()">Run ▶</button>
+    </div>
+    <textarea class="sql-input" id="sql-input" placeholder="SELECT * FROM services LIMIT 20;" spellcheck="false"></textarea>
+    <div class="sql-results" id="sql-results"></div>
+  </div>
+</div>
+
+<div id="toast2"></div>
+
+<script>
+let tables = [], currentTable = null, currentPage = 1, currentPK = null, currentTab = 'browse';
+
+async function init() {
+  try {
+    const info = await (await fetch('/db/api/info')).json();
+    document.getElementById('db-host').textContent = `${info.host}:${info.port} / ${info.database}`;
+  } catch {}
+
+  await loadTables();
+
+  document.getElementById('sql-input').addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runSQL(); }
+  });
+}
+
+async function loadTables() {
+  try {
+    const r = await fetch('/db/api/tables');
+    tables = await r.json();
+    renderTableList(tables);
+    const total = tables.reduce((s, t) => s + t.rows, 0);
+    document.getElementById('sidebar-footer').textContent = `${tables.length} tables · ${total.toLocaleString()} rows`;
+  } catch(e) {
+    document.getElementById('table-list').innerHTML = `<div class="loading" style="color:var(--red)">${e.message}</div>`;
+  }
+}
+
+function renderTableList(list) {
+  document.getElementById('table-list').innerHTML = list.length
+    ? list.map(t => `<div class="table-item${currentTable === t.name ? ' active' : ''}" onclick="selectTable('${t.name}')">
+        <span class="table-item-name">${esc(t.name)}</span>
+        <span class="table-item-rows">${t.rows.toLocaleString()}</span>
+      </div>`).join('')
+    : '<div class="loading">No tables found</div>';
+}
+
+function filterTables(q) {
+  const filtered = q ? tables.filter(t => t.name.toLowerCase().includes(q.toLowerCase())) : tables;
+  renderTableList(filtered);
+}
+
+async function selectTable(name) {
+  currentTable = name; currentPage = 1;
+  document.getElementById('topbar-title').textContent = name;
+  document.getElementById('topbar-title').style.color = '';
+  document.getElementById('tab-row').style.display    = 'flex';
+  document.getElementById('btn-trunc').style.display  = 'block';
+  renderTableList(tables);
+  switchTab(currentTab);
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.db-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.getElementById('tab-browse').style.display    = tab === 'browse'    ? 'flex' : 'none';
+  document.getElementById('tab-structure').style.display = tab === 'structure' ? 'flex' : 'none';
+  if (tab === 'browse')    loadBrowse();
+  if (tab === 'structure') loadStructure();
+}
+
+async function loadBrowse(page) {
+  if (!currentTable) return;
+  if (page) currentPage = page;
+  document.getElementById('browse-empty').style.display   = 'none';
+  document.getElementById('browse-content').style.display = 'flex';
+  document.getElementById('data-table').innerHTML = '<tr><td class="loading">Loading…</td></tr>';
+  try {
+    const r    = await fetch(`/db/api/table/${encodeURIComponent(currentTable)}/rows?page=${currentPage}&limit=50`);
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error);
+    currentPK = data.pk;
+    renderDataTable(data);
+  } catch(e) {
+    document.getElementById('data-table').innerHTML = `<tr><td class="loading" style="color:var(--red)">${e.message}</td></tr>`;
+  }
+}
+
+function renderDataTable({ rows, columns, pk, total, page, limit, pages }) {
+  const thead = '<thead><tr>' + columns.map(c =>
+    `<th>${esc(c)}${c === pk ? ' <span style="font-size:.65rem;opacity:.6">PK</span>' : ''}</th>`
+  ).join('') + '<th></th></tr></thead>';
+
+  const tbody = '<tbody>' + rows.map(row => {
+    const cells = columns.map(c => {
+      const v = row[c];
+      if (v === null || v === undefined) return '<td class="null-val">NULL</td>';
+      const str  = typeof v === 'object' ? JSON.stringify(v) : String(v);
+      const disp = str.length > 80 ? str.slice(0, 80) + '…' : str;
+      return `<td title="${esc(str)}">${esc(disp)}</td>`;
+    }).join('');
+    const pkVal  = pk ? row[pk] : null;
+    const delBtn = pk ? `<button class="btn-row-del" onclick="deleteRow(${JSON.stringify(pkVal)})" title="Delete">✕</button>` : '';
+    return `<tr>${cells}<td>${delBtn}</td></tr>`;
+  }).join('') + '</tbody>';
+
+  document.getElementById('data-table').innerHTML = thead + tbody;
+
+  const start = (page - 1) * limit + 1, end = Math.min(page * limit, total);
+  document.getElementById('pagination').innerHTML = `
+    <span class="pag-info">Rows ${start}–${end} of ${total.toLocaleString()}</span>
+    <div class="pag-btns">
+      <button class="pag-btn" onclick="loadBrowse(1)"         ${page <= 1     ? 'disabled' : ''}>«</button>
+      <button class="pag-btn" onclick="loadBrowse(${page-1})" ${page <= 1     ? 'disabled' : ''}>‹ Prev</button>
+      <button class="pag-btn active" disabled>${page}</button>
+      <button class="pag-btn" onclick="loadBrowse(${page+1})" ${page >= pages ? 'disabled' : ''}>Next ›</button>
+      <button class="pag-btn" onclick="loadBrowse(${pages})"  ${page >= pages ? 'disabled' : ''}>»</button>
+    </div>`;
+}
+
+async function deleteRow(pkVal) {
+  if (!currentPK || !confirm('Delete this row?')) return;
+  try {
+    const r = await fetch(`/db/api/table/${encodeURIComponent(currentTable)}/row`, {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pk: currentPK, pkValue: pkVal }),
+    });
+    if (!r.ok) throw new Error((await r.json()).error);
+    toast2('Row deleted', 'ok');
+    loadTables(); loadBrowse();
+  } catch(e) { toast2(e.message, 'err'); }
+}
+
+async function loadStructure() {
+  if (!currentTable) return;
+  const el = document.getElementById('tab-structure');
+  el.innerHTML = '<div class="loading">Loading…</div>';
+  try {
+    const r    = await fetch(`/db/api/table/${encodeURIComponent(currentTable)}/structure`);
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error);
+
+    const keyBadge = k =>
+      k === 'PRI' ? '<span class="key-badge key-pri">PK</span>' :
+      k === 'UNI' ? '<span class="key-badge key-uni">UNI</span>' :
+      k === 'MUL' ? '<span class="key-badge key-mul">IDX</span>' : '';
+
+    const thead = '<thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Key</th><th>Default</th><th>Extra</th></tr></thead>';
+    const tbody = '<tbody>' + data.columns.map(c => `<tr>
+      <td style="font-weight:600;color:var(--txt)">${esc(c.Field)}</td>
+      <td>${esc(c.Type)}</td>
+      <td style="color:${c.Null==='YES'?'var(--txt3)':'var(--txt)'}">${c.Null}</td>
+      <td>${keyBadge(c.Key)}</td>
+      <td class="${c.Default===null?'null-val':''}">${c.Default===null?'NULL':esc(String(c.Default))}</td>
+      <td style="color:var(--txt3)">${esc(c.Extra||'')}</td>
+    </tr>`).join('') + '</tbody>';
+
+    el.innerHTML = `
+      <div>
+        <div class="struct-section-label">Columns</div>
+        <table class="struct-table">${thead}${tbody}</table>
+      </div>
+      <div>
+        <div class="struct-section-label">Create statement</div>
+        <div class="create-sql-wrap"><pre>${esc(data.createSQL)}</pre></div>
+      </div>`;
+  } catch(e) { el.innerHTML = `<div class="loading" style="color:var(--red)">${e.message}</div>`; }
+}
+
+async function truncateTable() {
+  if (!currentTable || !confirm(`Truncate "${currentTable}"? All rows will be deleted.`)) return;
+  try {
+    const r = await fetch(`/db/api/table/${encodeURIComponent(currentTable)}/truncate`, { method: 'POST' });
+    if (!r.ok) throw new Error((await r.json()).error);
+    toast2('Table truncated', 'ok');
+    loadTables(); loadBrowse();
+  } catch(e) { toast2(e.message, 'err'); }
+}
+
+async function runSQL() {
+  const sql = document.getElementById('sql-input').value.trim();
+  if (!sql) return;
+  const out = document.getElementById('sql-results');
+  out.innerHTML = '<div class="sql-results-inner"><div class="loading">Running…</div></div>';
+  try {
+    const r    = await fetch('/db/api/query', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sql }) });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error);
+
+    if (data.type === 'select') {
+      const cols = data.columns.map(c => `<th>${esc(c)}</th>`).join('');
+      const rows = data.rows.map(row =>
+        '<tr>' + data.columns.map(c => {
+          const v = row[c];
+          const str = v === null ? 'NULL' : typeof v === 'object' ? JSON.stringify(v) : String(v);
+          return `<td class="${v===null?'null-val':''}">${esc(str.length > 100 ? str.slice(0,100)+'…' : str)}</td>`;
+        }).join('') + '</tr>'
+      ).join('');
+      out.innerHTML = `<div class="sql-results-inner">
+        <div class="result-meta"><span class="ok">✓ ${data.rowCount} row${data.rowCount!==1?'s':''} in ${data.elapsed} ms</span></div>
+        <table class="result-table"><thead><tr>${cols}</tr></thead><tbody>${rows}</tbody></table>
+      </div>`;
+    } else {
+      out.innerHTML = `<div class="sql-results-inner">
+        <div class="result-meta"><span class="ok">✓ ${data.affectedRows} row${data.affectedRows!==1?'s':''} affected · ${data.elapsed} ms${data.insertId ? '  · Insert ID: ' + data.insertId : ''}</span></div>
+      </div>`;
+      loadTables();
+      if (currentTable) loadBrowse();
+    }
+  } catch(e) {
+    out.innerHTML = `<div class="sql-results-inner"><div class="result-meta"><span class="err">✗ ${esc(e.message)}</span></div></div>`;
+  }
+}
+
+let t2Timer = null;
+function toast2(msg, type='ok') {
+  const el = document.getElementById('toast2');
+  el.textContent = msg; el.className = 'show ' + type;
+  clearTimeout(t2Timer); t2Timer = setTimeout(() => { el.className = ''; }, 3000);
+}
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function toggleNav() { document.getElementById('nav-drawer').classList.toggle('open'); document.getElementById('nav-overlay').classList.toggle('open'); }
+function closeNav()  { document.getElementById('nav-drawer').classList.remove('open');  document.getElementById('nav-overlay').classList.remove('open'); }
+
+init();
+</script>
+</body>
+</html>

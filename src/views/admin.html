@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin — Status Page</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:      #07070e;
+    --surface: rgba(255,255,255,0.04);
+    --surface2:rgba(255,255,255,0.07);
+    --border:  rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --txt:     #e8e8f0;
+    --txt2:    #8888aa;
+    --txt3:    #5a5a78;
+    --accent:  #7c5cfc;
+    --accent2: #5b3de8;
+    --green:   #22c55e;
+    --red:     #ef4444;
+    --yellow:  #f59e0b;
+    --gray:    #3a3a52;
+    --r:       14px;
+    --r-sm:    8px;
+  }
+  html { font-size: 15px; }
+  body { background: var(--bg); color: var(--txt); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; overflow-x: hidden; }
+  ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: var(--bg); } ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  body::before { content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background: radial-gradient(ellipse 80% 50% at 20% -10%, rgba(124,92,252,.12) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 40% at 80% 110%, rgba(6,182,212,.08) 0%, transparent 55%); }
+  .wrap { position:relative; z-index:1; max-width:1040px; margin:0 auto; padding:0 24px 80px; }
+
+  header { padding:48px 0 28px; display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .header-left h1 { font-size:1.45rem; font-weight:700; letter-spacing:-.03em; display:flex; align-items:center; gap:10px; }
+  .header-left p  { color:var(--txt2); font-size:.85rem; margin-top:4px; }
+  .admin-badge { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:999px; background:rgba(124,92,252,.12); border:1px solid rgba(124,92,252,.25); color:#a78bfa; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+
+  /* Tab nav */
+  .tab-nav { display:flex; gap:2px; margin-bottom:28px; background:var(--surface); border:1px solid var(--border); border-radius:13px; padding:4px; width:fit-content; }
+  .tab-btn { position:relative; padding:8px 20px; border-radius:10px; border:none; background:none; color:var(--txt2); font-size:.85rem; font-weight:600; cursor:pointer; transition:all .2s; white-space:nowrap; }
+  .tab-btn:hover { color:var(--txt); }
+  .tab-btn.active { background:var(--accent); color:#fff; }
+  .tab-btn .n-badge { position:absolute; top:4px; right:6px; width:16px; height:16px; border-radius:50%; background:var(--red); color:#fff; font-size:.6rem; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .tab-pane { display:none; } .tab-pane.active { display:block; }
+
+  /* ── Overview ── */
+  .stats-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(155px,1fr)); gap:12px; margin-bottom:32px; }
+  .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:18px 20px; backdrop-filter:blur(12px); }
+  .stat-card .sc-label { font-size:.72rem; color:var(--txt2); text-transform:uppercase; letter-spacing:.07em; margin-bottom:6px; }
+  .stat-card .sc-val   { font-size:1.7rem; font-weight:700; letter-spacing:-.03em; }
+  .sc-val.green  { color:var(--green); }
+  .sc-val.red    { color:var(--red); }
+  .sc-val.yellow { color:var(--yellow); }
+  .sc-val.purple { color:#a78bfa; }
+
+  .section-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .section-head h2 { font-size:.82rem; font-weight:700; text-transform:uppercase; letter-spacing:.09em; color:var(--txt3); }
+
+  /* Incidents */
+  .incident-row { display:flex; align-items:center; gap:12px; padding:11px 16px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-sm); margin-bottom:6px; font-size:.82rem; }
+  .incident-row:last-child { margin-bottom:0; }
+  .inc-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .inc-dot.down     { background:var(--red); }
+  .inc-dot.degraded { background:var(--yellow); }
+  .inc-name { font-weight:600; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .inc-status { padding:2px 8px; border-radius:999px; font-size:.7rem; font-weight:600; flex-shrink:0; }
+  .inc-status.down     { background:rgba(239,68,68,.1);   color:var(--red);    border:1px solid rgba(239,68,68,.2); }
+  .inc-status.degraded { background:rgba(245,158,11,.1);  color:var(--yellow); border:1px solid rgba(245,158,11,.2); }
+  .inc-time { font-size:.72rem; color:var(--txt3); flex-shrink:0; }
+  .inc-url  { font-size:.72rem; color:var(--txt3); flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px; }
+
+  /* ── Requests ── */
+  .req-filters { display:flex; gap:4px; margin-bottom:20px; }
+  .rf-btn { padding:5px 15px; border-radius:999px; border:1px solid var(--border); background:transparent; color:var(--txt2); font-size:.78rem; font-weight:600; cursor:pointer; transition:all .2s; }
+  .rf-btn:hover  { border-color:var(--border2); color:var(--txt); }
+  .rf-btn.active { background:var(--surface2); border-color:var(--border2); color:var(--txt); }
+
+  .req-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:20px 22px; margin-bottom:10px; backdrop-filter:blur(12px); transition:border-color .2s; }
+  .req-card:hover { border-color:var(--border2); }
+  .req-card.pending  { border-left:3px solid var(--accent); }
+  .req-card.approved { border-left:3px solid var(--green);  opacity:.75; }
+  .req-card.rejected { border-left:3px solid var(--red);    opacity:.6;  }
+
+  .rc-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:10px; flex-wrap:wrap; }
+  .rc-name { font-size:.95rem; font-weight:700; margin-bottom:3px; display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+  .rc-url  { font-size:.75rem; color:var(--txt2); word-break:break-all; }
+
+  .badge { display:inline-flex; align-items:center; padding:2px 9px; border-radius:999px; font-size:.7rem; font-weight:600; white-space:nowrap; }
+  .b-pending  { background:rgba(124,92,252,.12); color:#a78bfa;       border:1px solid rgba(124,92,252,.25); }
+  .b-approved { background:rgba(34,197,94,.1);   color:var(--green);  border:1px solid rgba(34,197,94,.25); }
+  .b-rejected { background:rgba(239,68,68,.1);   color:var(--red);    border:1px solid rgba(239,68,68,.25); }
+  .b-urgent   { background:rgba(239,68,68,.1);   color:var(--red);    border:1px solid rgba(239,68,68,.2); }
+  .b-high     { background:rgba(245,158,11,.1);  color:var(--yellow); border:1px solid rgba(245,158,11,.2); }
+  .b-normal   { background:rgba(255,255,255,.05);color:var(--txt2);   border:1px solid var(--border); }
+  .b-low      { background:rgba(58,58,82,.3);    color:var(--txt3);   border:1px solid var(--border); }
+  .b-type     { background:rgba(6,182,212,.08);  color:#67e8f9;       border:1px solid rgba(6,182,212,.2); }
+
+  .rc-meta { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:7px; margin-bottom:12px; }
+  .rc-meta-item { background:rgba(255,255,255,.03); border-radius:var(--r-sm); padding:7px 10px; border:1px solid var(--border); }
+  .rc-meta-item .ml { font-size:.65rem; color:var(--txt3); text-transform:uppercase; letter-spacing:.07em; margin-bottom:2px; }
+  .rc-meta-item .mv { font-size:.8rem; word-break:break-all; }
+
+  .rc-desc { font-size:.8rem; color:var(--txt2); line-height:1.6; padding:9px 11px; background:rgba(255,255,255,.025); border-radius:var(--r-sm); margin-bottom:12px; border:1px solid var(--border); }
+
+  .rc-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .btn-approve { padding:7px 18px; border-radius:999px; border:none; background:var(--green); color:#fff; font-size:.8rem; font-weight:600; cursor:pointer; transition:background .2s, transform .1s; }
+  .btn-approve:hover  { background:#16a34a; }
+  .btn-approve:active { transform:scale(.97); }
+  .btn-reject  { padding:7px 18px; border-radius:999px; border:1px solid var(--border2); background:transparent; color:var(--txt2); font-size:.8rem; font-weight:600; cursor:pointer; transition:all .2s; }
+  .btn-reject:hover  { border-color:var(--red); color:var(--red); background:rgba(239,68,68,.08); }
+  .btn-del  { padding:7px 12px; border-radius:999px; border:1px solid var(--border); background:transparent; color:var(--txt3); font-size:.8rem; cursor:pointer; transition:all .2s; margin-left:auto; }
+  .btn-del:hover { border-color:var(--red); color:var(--red); background:rgba(239,68,68,.08); }
+  .rc-date { font-size:.7rem; color:var(--txt3); }
+
+  /* ── Services ── */
+  .svc-toolbar { display:flex; align-items:center; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
+  .search-box { flex:1; min-width:180px; padding:9px 14px; border-radius:var(--r-sm); border:1px solid var(--border); background:rgba(255,255,255,.05); color:var(--txt); font-size:.85rem; outline:none; transition:border-color .2s; }
+  .search-box:focus { border-color:var(--accent); }
+  .search-box::placeholder { color:var(--txt3); }
+  .btn-primary { display:flex; align-items:center; gap:7px; padding:9px 18px; border-radius:999px; background:var(--accent); border:none; cursor:pointer; color:#fff; font-size:.85rem; font-weight:600; transition:background .2s, transform .1s; }
+  .btn-primary:hover  { background:var(--accent2); }
+  .btn-primary:active { transform:scale(.97); }
+
+  .svc-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:16px 20px; margin-bottom:8px; backdrop-filter:blur(12px); display:flex; align-items:center; gap:14px; transition:border-color .2s; }
+  .svc-card:hover { border-color:var(--border2); }
+  .svc-color-bar { width:3px; height:36px; border-radius:3px; flex-shrink:0; }
+  .svc-color-bar.up       { background:var(--green); }
+  .svc-color-bar.down     { background:var(--red); }
+  .svc-color-bar.degraded { background:var(--yellow); }
+  .svc-color-bar.pending  { background:var(--gray); }
+  .svc-info { flex:1; min-width:0; }
+  .svc-name { font-size:.9rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:2px; }
+  .svc-url  { font-size:.73rem; color:var(--txt2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .svc-right { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+  .pill { display:flex; align-items:center; gap:5px; padding:3px 10px; border-radius:999px; font-size:.73rem; font-weight:600; }
+  .pill .dot { width:5px; height:5px; border-radius:50%; background:currentColor; }
+  .pill-up       { color:var(--green);  background:rgba(34,197,94,.1); }
+  .pill-down     { color:var(--red);    background:rgba(239,68,68,.1); }
+  .pill-degraded { color:var(--yellow); background:rgba(245,158,11,.1); }
+  .pill-pending      { color:var(--txt2);   background:rgba(255,255,255,.05); }
+  .pill-maintenance  { color:#67e8f9;     background:rgba(6,182,212,.1); }
+  .cat-chip { font-size:.7rem; color:var(--txt3); padding:2px 8px; border-radius:999px; border:1px solid var(--border); }
+  .tag-chip { font-size:.68rem; padding:2px 8px; border-radius:999px; background:rgba(124,92,252,.1); border:1px solid rgba(124,92,252,.2); color:#c4b5fd; }
+  .btn-icon { background:none; border:none; cursor:pointer; color:var(--txt3); padding:5px 7px; border-radius:6px; transition:color .2s, background .2s; font-size:.85rem; }
+  .btn-icon:hover { color:var(--red); background:rgba(239,68,68,.1); }
+
+  /* Add/edit service inline form */
+  .svc-form { background:rgba(255,255,255,.03); border:1px solid var(--border2); border-radius:var(--r); padding:22px 24px; margin-bottom:20px; }
+  .svc-form h3 { font-size:.9rem; font-weight:700; margin-bottom:18px; }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media(max-width:540px) { .form-grid { grid-template-columns:1fr; } }
+  .field { margin-bottom:0; }
+  .field label { display:block; font-size:.72rem; font-weight:600; color:var(--txt2); margin-bottom:5px; text-transform:uppercase; letter-spacing:.05em; }
+  .field input, .field select { width:100%; padding:9px 12px; border-radius:var(--r-sm); background:rgba(255,255,255,.05); border:1px solid var(--border); color:var(--txt); font-size:.88rem; outline:none; transition:border-color .2s; font-family:inherit; }
+  .field input::placeholder { color:var(--txt3); }
+  .field input:focus, .field select:focus { border-color:var(--accent); }
+  .field select option { background:#1a1a2e; }
+  .form-actions { display:flex; align-items:center; gap:10px; margin-top:18px; }
+  .btn-save { padding:9px 22px; border-radius:999px; border:none; background:var(--accent); color:#fff; font-size:.85rem; font-weight:600; cursor:pointer; transition:background .2s, transform .1s; }
+  .btn-save:hover { background:var(--accent2); }
+  .btn-cancel-form { padding:9px 18px; border-radius:999px; border:1px solid var(--border); background:transparent; color:var(--txt2); font-size:.85rem; cursor:pointer; transition:all .2s; }
+  .btn-cancel-form:hover { border-color:var(--border2); color:var(--txt); }
+
+  /* ── Drag handle ── */
+  .drag-handle { display:flex; align-items:center; color:var(--txt3); cursor:grab; padding:0 10px 0 0; flex-shrink:0; opacity:.45; transition:opacity .15s; }
+  .svc-card:hover .drag-handle { opacity:1; }
+  .svc-order { min-width:22px; text-align:right; font-size:.72rem; font-weight:700; color:var(--txt3); flex-shrink:0; margin-right:6px; }
+  .drag-handle:active { cursor:grabbing; }
+  .svc-card.drag-over { border-color:var(--accent); background:rgba(124,92,252,.07); box-shadow:0 0 0 1px var(--accent); }
+  .svc-card.dragging  { opacity:.35; }
+
+  /* ── System ── */
+  .sys-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; }
+  .sys-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:22px 24px; backdrop-filter:blur(12px); }
+  .sys-card h3 { font-size:.85rem; font-weight:700; margin-bottom:4px; }
+  .sys-card p  { font-size:.78rem; color:var(--txt2); margin-bottom:16px; line-height:1.5; }
+  .sys-row { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border); font-size:.82rem; }
+  .sys-row:last-of-type { border-bottom:none; }
+  .sys-row .sk { color:var(--txt2); }
+  .sys-row .sv { font-weight:600; font-family:monospace; }
+  .btn-secondary { display:flex; align-items:center; gap:7px; padding:9px 18px; border-radius:999px; border:1px solid var(--border2); background:transparent; color:var(--txt); font-size:.83rem; font-weight:600; cursor:pointer; transition:all .2s; }
+  .btn-secondary:hover { background:var(--surface2); }
+  .btn-group { display:flex; gap:8px; flex-wrap:wrap; }
+  .btn-danger { padding:9px 18px; border-radius:999px; border:1px solid rgba(239,68,68,.3); background:rgba(239,68,68,.08); color:var(--red); font-size:.83rem; font-weight:600; cursor:pointer; transition:all .2s; }
+  .btn-danger:hover { background:rgba(239,68,68,.16); border-color:rgba(239,68,68,.5); }
+  .prune-row { display:flex; align-items:center; gap:10px; margin-top:12px; flex-wrap:wrap; }
+  .prune-row select { padding:8px 12px; border-radius:var(--r-sm); background:rgba(255,255,255,.05); border:1px solid var(--border); color:var(--txt); font-size:.83rem; outline:none; }
+  .prune-row select option { background:#1a1a2e; }
+
+  /* SLA table */
+  .sla-table { width:100%; border-collapse:collapse; font-size:.82rem; }
+  .sla-table th { text-align:left; padding:7px 10px; font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--txt3); border-bottom:1px solid var(--border); }
+  .sla-table td { padding:8px 10px; border-bottom:1px solid var(--border); }
+  .sla-table tr:last-child td { border-bottom:none; }
+  .sla-ok   { color:var(--green);  font-weight:600; }
+  .sla-warn { color:var(--yellow); font-weight:600; }
+  .sla-bad  { color:var(--red);    font-weight:600; }
+  .badge-confirmed { display:inline-block; padding:2px 9px; border-radius:999px; font-size:.72rem; font-weight:600; background:rgba(34,197,94,.12); color:var(--green); border:1px solid rgba(34,197,94,.25); }
+  .badge-pending   { display:inline-block; padding:2px 9px; border-radius:999px; font-size:.72rem; font-weight:600; background:rgba(255,255,255,.06); color:var(--txt2); border:1px solid var(--border); }
+
+  /* Empty / loading */
+  .empty { text-align:center; padding:48px 20px; color:var(--txt2); }
+  .empty .icon { font-size:2.2rem; margin-bottom:12px; opacity:.4; }
+  .empty p { font-size:.9rem; }
+
+  /* Toast */
+  #toast { position:fixed; bottom:28px; right:28px; z-index:200; background:#1c1c38; border:1px solid var(--border2); border-radius:12px; padding:12px 20px; font-size:.85rem; color:var(--txt); box-shadow:0 8px 32px rgba(0,0,0,.4); transform:translateY(20px); opacity:0; transition:all .3s; pointer-events:none; }
+  #toast.show { transform:translateY(0); opacity:1; }
+  #toast.ok  { border-color:rgba(34,197,94,.35); }
+  #toast.err { border-color:rgba(239,68,68,.35); color:#fca5a5; }
+
+  /* Modal */
+  .overlay { display:none; position:fixed; inset:0; z-index:100; background:rgba(0,0,0,.65); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:24px; }
+  .overlay.open { display:flex; }
+  .modal { background:#11112a; border:1px solid var(--border2); border-radius:20px; padding:28px; width:100%; max-width:440px; box-shadow:0 40px 100px rgba(0,0,0,.5); animation:modal-in .22s cubic-bezier(.34,1.4,.64,1); }
+  @keyframes modal-in { from { opacity:0; transform:scale(.94) translateY(10px); } to { opacity:1; transform:scale(1) translateY(0); } }
+  .modal h2 { font-size:1rem; font-weight:700; margin-bottom:20px; }
+  .modal-footer { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; }
+  .btn-confirm { padding:9px 20px; border-radius:999px; border:none; background:var(--red); color:#fff; font-size:.84rem; font-weight:600; cursor:pointer; }
+
+  /* Burger / nav */
+  .burger { position:fixed; top:14px; left:14px; z-index:150; width:36px; height:36px; background:rgba(0,0,0,.55); border:1px solid var(--border); border-radius:9px; cursor:pointer; color:var(--txt2); display:flex; align-items:center; justify-content:center; backdrop-filter:blur(8px); transition:color .2s, background .2s; }
+  .burger:hover { color:var(--txt); background:rgba(255,255,255,.08); }
+  .nav-overlay { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.6); backdrop-filter:blur(4px); opacity:0; pointer-events:none; transition:opacity .25s; }
+  .nav-overlay.open { opacity:1; pointer-events:all; }
+  .nav-drawer { position:fixed; top:0; left:0; bottom:0; z-index:201; width:260px; background:#0d0d1e; border-right:1px solid var(--border2); display:flex; flex-direction:column; transform:translateX(-100%); transition:transform .28s cubic-bezier(.4,0,.2,1); }
+  .nav-drawer.open { transform:translateX(0); }
+  .nav-drawer-head { display:flex; align-items:center; justify-content:space-between; padding:20px 20px 16px; border-bottom:1px solid var(--border); }
+  .nav-drawer-head strong { font-size:.95rem; }
+  .nav-close { background:none; border:none; cursor:pointer; color:var(--txt2); font-size:1.25rem; line-height:1; padding:2px 6px; border-radius:6px; transition:color .2s; }
+  .nav-close:hover { color:var(--txt); }
+  .nav-links { padding:12px 8px; flex:1; display:flex; flex-direction:column; gap:2px; }
+  .nav-link { display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:10px; color:var(--txt2); text-decoration:none; font-size:.88rem; font-weight:500; transition:background .15s, color .15s; }
+  .nav-link:hover { background:var(--surface2); color:var(--txt); }
+  .nav-link.active { background:rgba(124,92,252,.15); color:#a78bfa; }
+  .nav-footer { padding:12px 16px 20px; border-top:1px solid var(--border); }
+  .btn-signout { width:100%; padding:9px; border-radius:10px; border:1px solid var(--border); background:none; color:var(--txt2); font-size:.84rem; cursor:pointer; transition:all .2s; }
+  .btn-signout:hover { background:rgba(239,68,68,.08); border-color:rgba(239,68,68,.3); color:var(--red); }
+</style>
+</head>
+<body>
+
+<div class="nav-overlay" id="nav-overlay" onclick="closeNav()"></div>
+<nav class="nav-drawer" id="nav-drawer">
+  <div class="nav-drawer-head"><strong>Navigation</strong><button class="nav-close" onclick="closeNav()">×</button></div>
+  <div class="nav-links">
+    <a href="/" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="2.5" fill="currentColor"/></svg>Status Page
+    </a>
+    <a href="/admin" class="nav-link active">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.5L2 4.5v3c0 3.3 2.6 6.4 6 7 3.4-.6 6-3.7 6-7v-3L8 1.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>Admin
+    </a>
+    <a href="/endpoints" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Endpoints
+    </a>
+    <a href="/db" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><ellipse cx="8" cy="4.5" rx="5" ry="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 4.5v3c0 1.1 2.24 2 5 2s5-.9 5-2v-3" stroke="currentColor" stroke-width="1.5"/><path d="M3 7.5v3c0 1.1 2.24 2 5 2s5-.9 5-2v-3" stroke="currentColor" stroke-width="1.5"/></svg>Database
+    </a>
+    <a href="/request" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v14M1 8h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Request Monitoring
+    </a>
+  </div>
+  <div class="nav-footer">
+    <form method="POST" action="/logout"><button class="btn-signout" type="submit">Sign out</button></form>
+  </div>
+</nav>
+<button class="burger" onclick="toggleNav()">
+  <svg width="18" height="14" viewBox="0 0 18 14" fill="none"><path d="M0 1h18M0 7h18M0 13h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+</button>
+
+<div class="wrap">
+  <header>
+    <div class="header-left">
+      <h1><span class="admin-badge">Admin</span> Control Panel</h1>
+      <p>Manage monitoring requests, services, and system configuration.</p>
+    </div>
+  </header>
+
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="setTab('overview')">Overview</button>
+    <button class="tab-btn" onclick="setTab('requests')" id="req-tab-btn">Requests</button>
+    <button class="tab-btn" onclick="setTab('services')">Services</button>
+    <button class="tab-btn" onclick="setTab('incidents')">Incidents</button>
+    <button class="tab-btn" onclick="setTab('system')">System</button>
+  </div>
+
+  <!-- ── OVERVIEW ── -->
+  <div class="tab-pane active" id="pane-overview">
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card"><div class="sc-label">Total services</div><div class="sc-val" id="s-total">—</div></div>
+      <div class="stat-card"><div class="sc-label">Operational</div><div class="sc-val green" id="s-up">—</div></div>
+      <div class="stat-card"><div class="sc-label">Down</div><div class="sc-val red" id="s-down">—</div></div>
+      <div class="stat-card"><div class="sc-label">Degraded</div><div class="sc-val yellow" id="s-deg">—</div></div>
+      <div class="stat-card"><div class="sc-label">Pending requests</div><div class="sc-val purple" id="s-pending">—</div></div>
+      <div class="stat-card"><div class="sc-label">Avg response (1h)</div><div class="sc-val" id="s-rt">—</div></div>
+    </div>
+
+    <div class="section-head"><h2>Incidents — last 24 hours</h2></div>
+    <div id="incidents-list"><div class="empty"><div class="icon">✅</div><p>Loading…</p></div></div>
+
+    <div class="section-head" style="margin-top:28px"><h2>Pending requests</h2>
+      <button class="btn-primary" style="padding:6px 14px;font-size:.78rem" onclick="setTab('requests')">View all</button>
+    </div>
+    <div id="overview-requests"><div class="empty"><div class="icon">📋</div><p>Loading…</p></div></div>
+  </div>
+
+  <!-- ── REQUESTS ── -->
+  <div class="tab-pane" id="pane-requests">
+    <div class="req-filters">
+      <button class="rf-btn active" onclick="setReqFilter('pending')">Pending <span id="rf-pending-badge"></span></button>
+      <button class="rf-btn" onclick="setReqFilter('approved')">Approved</button>
+      <button class="rf-btn" onclick="setReqFilter('rejected')">Rejected</button>
+      <button class="rf-btn" onclick="setReqFilter('all')">All</button>
+    </div>
+    <div id="req-list"></div>
+  </div>
+
+  <!-- ── SERVICES ── -->
+  <div class="tab-pane" id="pane-services">
+    <div class="svc-toolbar">
+      <input class="search-box" id="svc-search" type="text" placeholder="Search services…" oninput="renderServices()">
+      <button class="btn-primary" onclick="openSvcForm()">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Add service
+      </button>
+    </div>
+    <div class="svc-form" id="svc-form" style="display:none">
+      <h3 id="svc-form-title">Add service</h3>
+      <div class="form-grid">
+        <div class="field"><label>Name *</label><input id="sf-name" type="text" placeholder="My API" autocomplete="off"></div>
+        <div class="field"><label>URL *</label><input id="sf-url" type="url" placeholder="https://example.com/health" autocomplete="off"></div>
+        <div class="field"><label>Category</label>
+          <select id="sf-cat">
+            <option>General</option><option>Infrastructure</option><option>APIs</option>
+            <option>Websites</option><option>Databases</option><option>Third-party</option>
+          </select>
+        </div>
+        <div class="field"><label>Tags (comma separated)</label><input id="sf-tags" type="text" placeholder="prod, critical" autocomplete="off"></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-save" id="svc-save-btn" onclick="saveService()">Add service</button>
+        <button class="btn-cancel-form" onclick="closeSvcForm()">Cancel</button>
+      </div>
+    </div>
+    <div id="svc-list"></div>
+  </div>
+
+  <!-- ── INCIDENTS ── -->
+  <div class="tab-pane" id="pane-incidents">
+
+    <!-- Post incident -->
+    <div class="svc-form" id="inc-form" style="margin-bottom:20px">
+      <h3>Post announcement</h3>
+      <div class="form-grid">
+        <div class="field" style="grid-column:1/-1"><label>Title *</label><input id="inc-title" type="text" placeholder="Investigating elevated error rates…" autocomplete="off"></div>
+        <div class="field" style="grid-column:1/-1"><label>Message</label><textarea id="inc-body" rows="3" placeholder="We are aware of an issue affecting…" autocomplete="off" style="width:100%;padding:10px 14px;border-radius:var(--r-sm);background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--txt);font-size:.88rem;resize:vertical;outline:none;font-family:inherit;transition:border-color .2s"></textarea></div>
+        <div class="field"><label>Severity</label>
+          <select id="inc-severity">
+            <option value="minor">Minor</option>
+            <option value="major">Major</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+        <div class="field" style="display:flex;align-items:center;gap:10px;padding-top:18px">
+          <input type="checkbox" id="inc-notify" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer" checked>
+          <label for="inc-notify" style="font-size:.82rem;color:var(--txt2);cursor:pointer;text-transform:none;letter-spacing:0;font-weight:500">Notify all subscribers (email + Discord)</label>
+        </div>
+      </div>
+      <div class="form-actions" style="margin-top:14px">
+        <button class="btn-save" onclick="postIncident()">Post announcement</button>
+      </div>
+    </div>
+
+    <!-- Broadcast update (no incident) -->
+    <div class="svc-form" style="margin-bottom:20px">
+      <h3>Send update to subscribers</h3>
+      <p style="font-size:.8rem;color:var(--txt2);margin-bottom:14px">Sends directly to all email subscribers and Discord webhooks without creating a public incident.</p>
+      <div class="form-grid">
+        <div class="field" style="grid-column:1/-1"><label>Subject *</label><input id="bc-title" type="text" placeholder="Scheduled maintenance this weekend…" autocomplete="off"></div>
+        <div class="field" style="grid-column:1/-1"><label>Message</label><textarea id="bc-body" rows="4" placeholder="Full details of the update…" style="width:100%;padding:10px 14px;border-radius:var(--r-sm);background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--txt);font-size:.88rem;resize:vertical;outline:none;font-family:inherit;transition:border-color .2s"></textarea></div>
+        <div class="field"><label>Type</label>
+          <select id="bc-severity">
+            <option value="info">Info</option>
+            <option value="minor">Warning</option>
+            <option value="major">Alert</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions" style="margin-top:14px">
+        <button class="btn-save" id="bc-btn" onclick="sendBroadcast()">Send update</button>
+      </div>
+      <div id="bc-result" style="margin-top:10px;font-size:.8rem;color:var(--txt3)"></div>
+    </div>
+
+    <div id="inc-list"><div class="empty"><div class="icon">📢</div><p>Loading…</p></div></div>
+  </div>
+
+  <!-- ── SYSTEM ── -->
+  <div class="tab-pane" id="pane-system">
+    <div class="sys-grid">
+
+      <div class="sys-card">
+        <h3>Configuration</h3>
+        <p>Current runtime settings loaded from config and .env.</p>
+        <div class="sys-row"><span class="sk">Check interval</span><span class="sv">10 s</span></div>
+        <div class="sys-row"><span class="sk">Webhook cooldown</span><span class="sv" id="cfg-cooldown">—</span></div>
+        <div class="sys-row"><span class="sk">Max history rows</span><span class="sv">259,200 (30 days)</span></div>
+        <div class="sys-row"><span class="sk">Discord webhook</span><span class="sv" id="cfg-webhook">—</span></div>
+        <div class="sys-row"><span class="sk">Auth password</span><span class="sv">set in .env</span></div>
+      </div>
+
+      <div class="sys-card">
+        <h3>Discord webhook test</h3>
+        <p>Send a test message to verify your Discord webhook is working.</p>
+        <div class="btn-group">
+          <button class="btn-secondary" onclick="testWebhook('ping')">🔔 Ping</button>
+          <button class="btn-secondary" onclick="testWebhook('down')">🔴 Simulated down</button>
+          <button class="btn-secondary" onclick="testWebhook('recovery')">🟢 Simulated recovery</button>
+        </div>
+        <div id="webhook-result" style="margin-top:12px;font-size:.78rem;color:var(--txt3)"></div>
+      </div>
+
+      <div class="sys-card">
+        <h3>Test email</h3>
+        <p>Send a test email to verify SMTP is configured correctly.</p>
+        <div class="prune-row">
+          <input id="test-email-to" type="email" placeholder="recipient@example.com" style="flex:1;padding:8px 12px;border-radius:var(--r-sm);background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--txt);font-size:.83rem;outline:none" value="monkeybyteshosting@gmail.com">
+          <button class="btn-secondary" onclick="sendTestEmail()">Send test</button>
+        </div>
+        <div id="email-test-result" style="margin-top:10px;font-size:.78rem;color:var(--txt3)"></div>
+      </div>
+
+      <div class="sys-card">
+        <h3>Export history</h3>
+        <p>Download all monitoring history as a CSV file.</p>
+        <div class="btn-group">
+          <a href="/admin/api/export/history.csv" class="btn-secondary" style="text-decoration:none" download>⬇ Download CSV</a>
+        </div>
+      </div>
+
+      <div class="sys-card">
+        <h3>History pruning</h3>
+        <p>Delete old history records to free database space. This is irreversible.</p>
+        <div class="prune-row">
+          <select id="prune-days">
+            <option value="7">Older than 7 days</option>
+            <option value="14">Older than 14 days</option>
+            <option value="30" selected>Older than 30 days</option>
+            <option value="60">Older than 60 days</option>
+            <option value="90">Older than 90 days</option>
+          </select>
+          <button class="btn-danger" onclick="confirmPrune()">Prune history</button>
+        </div>
+      </div>
+
+      <div class="sys-card" style="grid-column:1/-1">
+        <h3>Uptime SLA</h3>
+        <p>Uptime percentage per service over the last 24 hours, 7 days, and 30 days.</p>
+        <div id="sla-table" style="margin-top:8px"><span style="font-size:.8rem;color:var(--txt3)">Loading…</span></div>
+      </div>
+
+      <div class="sys-card">
+        <h3>Quick links</h3>
+        <p>Jump to other admin areas.</p>
+        <div class="btn-group" style="flex-direction:column;gap:6px">
+          <a href="/endpoints" class="btn-secondary" style="text-decoration:none">→ Endpoints manager</a>
+          <a href="/db"        class="btn-secondary" style="text-decoration:none">→ Database manager</a>
+          <a href="/requests"  class="btn-secondary" style="text-decoration:none">→ Requests (standalone)</a>
+        </div>
+      </div>
+
+      <div class="sys-card" style="grid-column:1/-1">
+        <h3>Email subscribers</h3>
+        <p>People who have subscribed to status alerts from the public page. Only confirmed subscribers receive emails.</p>
+        <div id="sub-list" style="margin-top:12px"><span style="font-size:.8rem;color:var(--txt3)">Loading…</span></div>
+      </div>
+
+      <div class="sys-card" style="grid-column:1/-1">
+        <h3>Discord webhook subscribers</h3>
+        <p>Discord channel webhooks that will receive status alerts. Manage who gets pinged during incidents.</p>
+        <div id="discord-sub-list" style="margin-top:12px"><span style="font-size:.8rem;color:var(--txt3)">Loading…</span></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Confirm modal -->
+<div class="overlay" id="confirm-overlay" onclick="if(event.target===this)closeConfirm()">
+  <div class="modal">
+    <h2 id="confirm-title">Are you sure?</h2>
+    <p id="confirm-body" style="font-size:.85rem;color:var(--txt2);line-height:1.6"></p>
+    <div class="modal-footer">
+      <button class="btn-cancel-form" onclick="closeConfirm()">Cancel</button>
+      <button class="btn-confirm" id="confirm-ok">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+let requests = [], services = [], reqFilter = 'pending', editingId = null;
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+async function init() {
+  await Promise.all([loadStats(), loadIncidents(), loadRequests(), loadServices()]);
+  loadConfig();
+}
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+function setTab(tab) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + tab));
+  document.querySelectorAll('.tab-btn').forEach((b, i) =>
+    b.classList.toggle('active', ['overview','requests','services','incidents','system'][i] === tab)
+  );
+  if (tab === 'incidents') loadAnnouncements();
+  if (tab === 'system') { loadSLA(); loadSubscribers(); loadWebhookSubscribers(); }
+}
+
+// ─── Overview ─────────────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const d = await (await fetch('/admin/api/stats')).json();
+    document.getElementById('s-total').textContent   = d.total   ?? '—';
+    document.getElementById('s-up').textContent      = d.up      ?? '—';
+    document.getElementById('s-down').textContent    = d.down    ?? '—';
+    document.getElementById('s-deg').textContent     = d.degraded ?? '—';
+    document.getElementById('s-pending').textContent = d.pending  ?? '—';
+    document.getElementById('s-rt').textContent      = d.avgRt != null ? d.avgRt + ' ms' : '—';
+    // Update requests tab badge
+    if (d.pending > 0) {
+      const b = document.createElement('span'); b.className = 'n-badge'; b.textContent = d.pending;
+      const btn = document.getElementById('req-tab-btn');
+      btn.querySelector('.n-badge')?.remove(); btn.appendChild(b);
+    }
+  } catch {}
+}
+
+async function loadIncidents() {
+  try {
+    const rows = await (await fetch('/admin/api/incidents')).json();
+    const el   = document.getElementById('incidents-list');
+    if (!rows.length) {
+      el.innerHTML = '<div class="empty"><div class="icon">✅</div><p>No incidents in the last 24 hours.</p></div>'; return;
+    }
+    el.innerHTML = rows.slice(0,15).map(r => {
+      const t = new Date(r.checked_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+      return `<div class="incident-row">
+        <span class="inc-dot ${r.status}"></span>
+        <span class="inc-name">${esc(r.name)}</span>
+        <span class="inc-url">${esc(r.url)}</span>
+        <span class="inc-status ${r.status}">${r.status}</span>
+        <span class="inc-time">${t}</span>
+      </div>`;
+    }).join('');
+  } catch {}
+}
+
+// ─── Requests ─────────────────────────────────────────────────────────────────
+async function loadRequests() {
+  try {
+    requests = await (await fetch('/requests/api/list')).json();
+    const p = requests.filter(r => r.status === 'pending').length;
+    document.getElementById('rf-pending-badge').textContent = p ? `(${p})` : '';
+    renderRequests();
+    renderOverviewRequests();
+  } catch {}
+}
+
+function setReqFilter(f) {
+  reqFilter = f;
+  document.querySelectorAll('.rf-btn').forEach((b,i) =>
+    b.classList.toggle('active', ['pending','approved','rejected','all'][i] === f)
+  );
+  renderRequests();
+}
+
+function renderRequests() {
+  const visible = reqFilter === 'all' ? requests : requests.filter(r => r.status === reqFilter);
+  const el = document.getElementById('req-list');
+  if (!visible.length) { el.innerHTML = `<div class="empty"><div class="icon">📋</div><p>${reqFilter === 'all' ? 'No requests yet.' : 'No ' + reqFilter + ' requests.'}</p></div>`; return; }
+  el.innerHTML = visible.map(reqCardHTML).join('');
+}
+
+function renderOverviewRequests() {
+  const pending = requests.filter(r => r.status === 'pending').slice(0, 5);
+  const el = document.getElementById('overview-requests');
+  if (!pending.length) { el.innerHTML = '<div class="empty"><div class="icon">📋</div><p>No pending requests.</p></div>'; return; }
+  el.innerHTML = pending.map(reqCardHTML).join('');
+}
+
+function reqCardHTML(r) {
+  const statusBadge   = `<span class="badge b-${r.status}">${r.status}</span>`;
+  const priorityBadge = `<span class="badge b-${r.priority}">${r.priority}</span>`;
+  const typeBadge     = `<span class="badge b-type">${esc(r.service_type)}</span>`;
+  const date = new Date(r.created_at).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
+
+  const meta = [
+    r.category   ? `<div class="rc-meta-item"><div class="ml">Category</div><div class="mv">${esc(r.category)}</div></div>` : '',
+    r.discord_id ? `<div class="rc-meta-item"><div class="ml">Discord ID</div><div class="mv">${esc(r.discord_id)}</div></div>` : '',
+    r.contact    ? `<div class="rc-meta-item"><div class="ml">Email</div><div class="mv">${esc(r.contact)}</div></div>` : '',
+    `<div class="rc-meta-item"><div class="ml">Notify on</div><div class="mv">${[r.notify_down?'Outage':'',r.notify_recover?'Recovery':''].filter(Boolean).join(', ')||'None'}</div></div>`,
+  ].filter(Boolean).join('');
+
+  const actions = r.status === 'pending' ? `
+    <button class="btn-approve" onclick="approveReq('${r.id}')">✓ Approve</button>
+    <button class="btn-reject"  onclick="rejectReq('${r.id}')">Reject</button>
+    <span class="rc-date">${date}</span>
+    <button class="btn-del" onclick="deleteReq('${r.id}')">🗑</button>
+  ` : `<span class="rc-date">${date}</span><button class="btn-del" onclick="deleteReq('${r.id}')">🗑</button>`;
+
+  return `<div class="req-card ${r.status}" id="rcard-${r.id}">
+    <div class="rc-top">
+      <div><div class="rc-name">${esc(r.name)} ${statusBadge} ${priorityBadge} ${typeBadge}</div><div class="rc-url">${esc(r.url)}</div></div>
+    </div>
+    ${r.description ? `<div class="rc-desc">${esc(r.description)}</div>` : ''}
+    ${r.notes       ? `<div class="rc-desc"><strong>Notes:</strong> ${esc(r.notes)}</div>` : ''}
+    <div class="rc-meta">${meta}</div>
+    <div class="rc-actions">${actions}</div>
+  </div>`;
+}
+
+async function approveReq(id) {
+  try {
+    const r = await fetch(`/requests/api/approve/${id}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+    const d = await r.json(); if (!r.ok) throw new Error(d.error);
+    requests = requests.map(r => r.id === id ? {...r, status:'approved'} : r);
+    updatePendingBadge(); renderRequests(); renderOverviewRequests();
+    await loadStats(); toast('Approved — service is now being monitored', 'ok');
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function rejectReq(id) {
+  try {
+    const r = await fetch(`/requests/api/reject/${id}`, { method:'POST' });
+    const d = await r.json(); if (!r.ok) throw new Error(d.error);
+    requests = requests.map(r => r.id === id ? {...r, status:'rejected'} : r);
+    updatePendingBadge(); renderRequests(); renderOverviewRequests();
+    await loadStats(); toast('Request rejected', 'ok');
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function deleteReq(id) {
+  if (!confirm('Delete this request permanently?')) return;
+  try {
+    const r = await fetch(`/requests/api/delete/${id}`, { method:'DELETE' });
+    if (!r.ok) throw new Error((await r.json()).error);
+    requests = requests.filter(r => r.id !== id);
+    updatePendingBadge(); renderRequests(); renderOverviewRequests();
+    await loadStats(); toast('Deleted', 'ok');
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+function updatePendingBadge() {
+  const p = requests.filter(r => r.status === 'pending').length;
+  document.getElementById('rf-pending-badge').textContent = p ? `(${p})` : '';
+  const nb = document.querySelector('#req-tab-btn .n-badge');
+  if (p > 0) { if (!nb) { const b = document.createElement('span'); b.className='n-badge'; b.textContent=p; document.getElementById('req-tab-btn').appendChild(b); } else nb.textContent=p; }
+  else nb?.remove();
+}
+
+// ─── Services ─────────────────────────────────────────────────────────────────
+async function loadServices() {
+  try {
+    services = await (await fetch('/api/services?hours=1')).json();
+    renderServices();
+  } catch {}
+}
+
+function renderServices() {
+  const q   = document.getElementById('svc-search').value.toLowerCase();
+  const vis = q ? services.filter(s => s.name.toLowerCase().includes(q) || s.url.toLowerCase().includes(q)) : services;
+  const el  = document.getElementById('svc-list');
+  if (!vis.length) { el.innerHTML = `<div class="empty"><div class="icon">⬡</div><p>${services.length?'No matches.':'No services yet.'}</p></div>`; return; }
+  el.innerHTML = vis.map((s, i) => {
+    const st   = s.currentStatus || 'pending';
+    const tags = (s.tags||[]).map(t => `<span class="tag-chip">${esc(t)}</span>`).join('');
+    return `<div class="svc-card" draggable="true" data-id="${s.id}">
+      <div class="drag-handle" title="Drag to reorder">
+        <svg width="10" height="16" viewBox="0 0 10 16" fill="none">
+          <circle cx="3" cy="3"  r="1.4" fill="currentColor"/>
+          <circle cx="3" cy="8"  r="1.4" fill="currentColor"/>
+          <circle cx="3" cy="13" r="1.4" fill="currentColor"/>
+          <circle cx="8" cy="3"  r="1.4" fill="currentColor"/>
+          <circle cx="8" cy="8"  r="1.4" fill="currentColor"/>
+          <circle cx="8" cy="13" r="1.4" fill="currentColor"/>
+        </svg>
+      </div>
+      <span class="svc-order">${i + 1}</span>
+      <div class="svc-color-bar ${st}"></div>
+      <div class="svc-info">
+        <div class="svc-name">${esc(s.name)} <span class="cat-chip">${esc(s.category||'General')}</span> ${tags}</div>
+        <div class="svc-url">${esc(s.url)}</div>
+      </div>
+      <div class="svc-right">
+        ${s.currentResponseTime != null ? `<span style="font-size:.72rem;color:var(--txt3)">${s.currentResponseTime} ms</span>` : ''}
+        <span class="pill pill-${st}"><span class="dot"></span>${st}</span>
+        <button class="btn-icon btn-check" onclick="checkNow('${s.id}', this)" title="Check now">⚡</button>
+        <button class="btn-icon" onclick="toggleMaintenance('${s.id}',this)" title="${s.maintenance_until && new Date(s.maintenance_until)>new Date() ? 'End maintenance':'Set maintenance'}" style="${s.maintenance_until && new Date(s.maintenance_until)>new Date() ? 'color:#67e8f9' : ''}">🔧</button>
+        <button class="btn-icon" onclick="editService('${s.id}')" title="Edit">✏️</button>
+        <button class="btn-icon" onclick="deleteService('${s.id}')" title="Remove">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+  attachDragEvents();
+}
+
+// ─── Drag-and-drop reorder ────────────────────────────────────────────────────
+let dragSrcId = null;
+
+function attachDragEvents() {
+  document.querySelectorAll('#svc-list .svc-card[draggable]').forEach(el => {
+    el.addEventListener('dragstart', e => {
+      dragSrcId = el.dataset.id;
+      el.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', dragSrcId);
+    });
+    el.addEventListener('dragend', () => {
+      el.classList.remove('dragging');
+      document.querySelectorAll('#svc-list .svc-card').forEach(c => c.classList.remove('drag-over'));
+    });
+    el.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (el.dataset.id !== dragSrcId) el.classList.add('drag-over');
+    });
+    el.addEventListener('dragleave', e => {
+      if (!el.contains(e.relatedTarget)) el.classList.remove('drag-over');
+    });
+    el.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      el.classList.remove('drag-over');
+      const toId = el.dataset.id;
+      if (!dragSrcId || dragSrcId === toId) return;
+      const fromIdx = services.findIndex(s => s.id === dragSrcId);
+      const toIdx   = services.findIndex(s => s.id === toId);
+      if (fromIdx === -1 || toIdx === -1) return;
+      const [item] = services.splice(fromIdx, 1);
+      services.splice(toIdx, 0, item);
+      renderServices();
+      saveOrder();
+    });
+  });
+}
+
+async function saveOrder() {
+  const order = services.map((s, i) => ({ id: s.id, position: i }));
+  try {
+    const r = await fetch('/api/services/reorder', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed');
+    toast('Order saved', 'ok');
+  } catch(e) { toast('Failed to save order: ' + e.message, 'err'); }
+}
+
+function openSvcForm(svc) {
+  editingId = svc ? svc.id : null;
+  document.getElementById('svc-form-title').textContent = svc ? 'Edit service' : 'Add service';
+  document.getElementById('svc-save-btn').textContent   = svc ? 'Save changes' : 'Add service';
+  document.getElementById('sf-name').value = svc?.name || '';
+  document.getElementById('sf-url').value  = svc?.url  || '';
+  document.getElementById('sf-cat').value  = svc?.category || 'General';
+  document.getElementById('sf-tags').value = (svc?.tags||[]).join(', ');
+  document.getElementById('svc-form').style.display = 'block';
+  document.getElementById('sf-name').focus();
+}
+
+function closeSvcForm() { document.getElementById('svc-form').style.display='none'; editingId=null; }
+
+function editService(id) {
+  const svc = services.find(s => s.id === id);
+  if (svc) { openSvcForm(svc); document.getElementById('svc-form').scrollIntoView({ behavior:'smooth', block:'nearest' }); }
+}
+
+async function saveService() {
+  const name = document.getElementById('sf-name').value.trim();
+  const url  = document.getElementById('sf-url').value.trim();
+  const cat  = document.getElementById('sf-cat').value;
+  const tags = document.getElementById('sf-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
+  if (!name || !url) { toast('Name and URL are required','err'); return; }
+  const btn = document.getElementById('svc-save-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    let r;
+    if (editingId) {
+      r = await fetch('/api/services/' + editingId, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name,url,category:cat,tags}) });
+    } else {
+      r = await fetch('/api/services', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name,url,category:cat,tags}) });
+    }
+    const d = await r.json(); if (!r.ok) throw new Error(d.error||'Error');
+    toast(editingId ? 'Service updated' : 'Service added','ok');
+    closeSvcForm(); await loadServices(); await loadStats();
+  } catch(e) { toast(e.message,'err'); }
+  finally { btn.disabled=false; btn.textContent=editingId?'Save changes':'Add service'; }
+}
+
+async function checkNow(id, btn) {
+  const orig = btn.textContent;
+  btn.textContent = '⏳'; btn.disabled = true;
+  try {
+    const r = await fetch(`/api/services/${id}/check`, { method: 'POST' });
+    const d = await r.json(); if (!r.ok) throw new Error(d.error);
+    services = services.map(s => s.id === id ? { ...s, currentStatus: d.status, currentResponseTime: d.responseTime } : s);
+    renderServices();
+    toast(`${d.status} — ${d.responseTime ?? '?'} ms`, d.status === 'up' ? 'ok' : 'err');
+  } catch(e) { toast(e.message, 'err'); }
+  finally { btn.textContent = orig; btn.disabled = false; }
+}
+
+async function toggleMaintenance(id, btn) {
+  const svc = services.find(s => s.id === id);
+  const inMaintenance = svc?.maintenance_until && new Date(svc.maintenance_until) > new Date();
+  if (inMaintenance) {
+    // clear
+    const r = await fetch(`/api/services/${id}/maintenance`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({minutes:0}) });
+    if (!r.ok) return toast('Failed', 'err');
+    svc.maintenance_until = null;
+    toast('Maintenance cleared', 'ok');
+  } else {
+    const mins = prompt('Maintenance window duration (minutes):', '60');
+    if (!mins || isNaN(mins)) return;
+    const r = await fetch(`/api/services/${id}/maintenance`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({minutes:parseInt(mins)}) });
+    const d = await r.json(); if (!r.ok) return toast(d.error, 'err');
+    svc.maintenance_until = d.until;
+    toast(`Maintenance set for ${mins} min`, 'ok');
+  }
+  renderServices();
+}
+
+async function deleteService(id) {
+  const svc = services.find(s => s.id === id);
+  if (!confirm(`Remove "${svc?.name}"?`)) return;
+  try {
+    const r = await fetch('/api/services/'+id, { method:'DELETE' });
+    if (!r.ok) throw new Error((await r.json()).error);
+    services = services.filter(s => s.id !== id);
+    renderServices(); await loadStats(); toast('Service removed','ok');
+  } catch(e) { toast(e.message,'err'); }
+}
+
+// ─── Incidents ────────────────────────────────────────────────────────────────
+const INC_COLOR = { minor: '#f59e0b', major: '#ef4444', critical: '#7c3aed' };
+
+async function loadAnnouncements() {
+  try {
+    const rows = await (await fetch('/admin/api/announcements')).json();
+    const el = document.getElementById('inc-list');
+    if (!rows.length) { el.innerHTML = '<div class="empty"><div class="icon">📢</div><p>No announcements.</p></div>'; return; }
+    el.innerHTML = rows.map(r => {
+      const dot   = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${INC_COLOR[r.severity]??'#888'};margin-right:6px"></span>`;
+      const badge = r.status === 'active'
+        ? `<span class="badge b-pending">active</span>`
+        : `<span class="badge b-approved">resolved</span>`;
+      const ts = new Date(r.created_at).toLocaleString('en-GB', { timeZone:'Europe/London', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+      return `<div class="svc-card" style="flex-direction:column;align-items:flex-start;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px;width:100%">
+          ${dot}<strong style="flex:1">${esc(r.title)}</strong>${badge}
+          ${r.status==='active'?`<button class="btn-save" style="padding:5px 14px;font-size:.75rem" onclick="resolveIncident('${r.id}')">Resolve</button>`:''}
+          <button class="btn-icon" onclick="deleteIncident('${r.id}')">✕</button>
+        </div>
+        ${r.body ? `<div style="font-size:.8rem;color:var(--txt2)">${esc(r.body)}</div>` : ''}
+        <div style="font-size:.7rem;color:var(--txt3)">${ts} · ${r.severity}</div>
+      </div>`;
+    }).join('');
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function postIncident() {
+  const title    = document.getElementById('inc-title').value.trim();
+  const body     = document.getElementById('inc-body').value.trim();
+  const severity = document.getElementById('inc-severity').value;
+  const notify   = document.getElementById('inc-notify').checked;
+  if (!title) { toast('Title is required', 'err'); return; }
+  try {
+    const r = await fetch('/admin/api/announcements', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({title,body,severity,notify}) });
+    const d = await r.json(); if (!r.ok) throw new Error(d.error);
+    document.getElementById('inc-title').value = '';
+    document.getElementById('inc-body').value  = '';
+    await loadAnnouncements();
+    if (notify && d.notifyResult) {
+      const nr = d.notifyResult;
+      toast(`Posted · ${nr.emailSent} email${nr.emailSent!==1?'s':''} · ${nr.webhooksSent} webhook${nr.webhooksSent!==1?'s':''} sent`, 'ok');
+    } else {
+      toast('Announcement posted', 'ok');
+    }
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function sendBroadcast() {
+  const title    = document.getElementById('bc-title').value.trim();
+  const body     = document.getElementById('bc-body').value.trim();
+  const severity = document.getElementById('bc-severity').value;
+  const btn      = document.getElementById('bc-btn');
+  const result   = document.getElementById('bc-result');
+  if (!title) { toast('Subject is required', 'err'); return; }
+  btn.disabled = true; btn.textContent = 'Sending…';
+  result.textContent = ''; result.style.color = 'var(--txt3)';
+  try {
+    const r = await fetch('/admin/api/broadcast', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({title,body,severity}) });
+    const d = await r.json(); if (!r.ok) throw new Error(d.error);
+    const msg = `✓ Sent — ${d.emailSent} email${d.emailSent!==1?'s':''}, ${d.webhooksSent} Discord webhook${d.webhooksSent!==1?'s':''}`;
+    result.textContent = msg; result.style.color = 'var(--green)';
+    toast(msg, 'ok');
+    if (d.errors?.length) console.warn('[broadcast errors]', d.errors);
+    document.getElementById('bc-title').value = '';
+    document.getElementById('bc-body').value  = '';
+  } catch(e) {
+    result.textContent = '✗ ' + e.message; result.style.color = 'var(--red)';
+    toast(e.message, 'err');
+  }
+  finally { btn.disabled = false; btn.textContent = 'Send update'; }
+}
+
+async function resolveIncident(id) {
+  try {
+    const r = await fetch(`/admin/api/announcements/${id}/resolve`, { method:'POST' });
+    if (!r.ok) throw new Error((await r.json()).error);
+    await loadAnnouncements(); toast('Resolved', 'ok');
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function deleteIncident(id) {
+  if (!confirm('Delete this announcement?')) return;
+  try {
+    const r = await fetch(`/admin/api/announcements/${id}`, { method:'DELETE' });
+    if (!r.ok) throw new Error((await r.json()).error);
+    await loadAnnouncements(); toast('Deleted', 'ok');
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ─── SLA ──────────────────────────────────────────────────────────────────────
+async function loadSLA() {
+  try {
+    const rows = await (await fetch('/admin/api/sla')).json();
+    const el = document.getElementById('sla-table');
+    if (!rows.length) { el.innerHTML = '<span style="font-size:.8rem;color:var(--txt3)">No services.</span>'; return; }
+    const slaClass = v => v == null ? '' : parseFloat(v) >= 99 ? 'sla-ok' : parseFloat(v) >= 95 ? 'sla-warn' : 'sla-bad';
+    const fmt = v => v == null ? '<span style="color:var(--txt3)">—</span>' : `<span class="${slaClass(v)}">${v}%</span>`;
+    el.innerHTML = `<table class="sla-table">
+      <thead><tr><th>Service</th><th>24h</th><th>7d</th><th>30d</th></tr></thead>
+      <tbody>${rows.map(r => `<tr><td>${esc(r.name)}</td><td>${fmt(r['24h'])}</td><td>${fmt(r['7d'])}</td><td>${fmt(r['30d'])}</td></tr>`).join('')}</tbody>
+    </table>`;
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ─── Subscribers ─────────────────────────────────────────────────────────────
+async function loadSubscribers() {
+  const el = document.getElementById('sub-list');
+  try {
+    const rows = await (await fetch('/admin/api/subscribers')).json();
+    if (!rows.length) { el.innerHTML = '<span style="font-size:.8rem;color:var(--txt3)">No subscribers yet.</span>'; return; }
+    el.innerHTML = `<table class="sla-table">
+      <thead><tr><th>Email</th><th>Status</th><th>Subscribed</th><th></th></tr></thead>
+      <tbody>${rows.map(r => `<tr>
+        <td>${esc(r.email)}</td>
+        <td><span class="${r.confirmed ? 'badge-confirmed' : 'badge-pending'}">${r.confirmed ? 'Confirmed' : 'Pending'}</span></td>
+        <td style="color:var(--txt3);font-size:.78rem">${new Date(r.created_at).toLocaleDateString('en-GB')}</td>
+        <td><button class="btn-danger" style="padding:3px 10px;font-size:.75rem" onclick="deleteSubscriber('${esc(r.id)}',this)">Remove</button></td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  } catch(e) { toast(e.message,'err'); }
+}
+
+async function deleteSubscriber(id, btn) {
+  btn.disabled = true;
+  try {
+    await fetch('/admin/api/subscribers/' + id, { method:'DELETE' });
+    await loadSubscribers(); toast('Subscriber removed','ok');
+  } catch(e) { toast(e.message,'err'); btn.disabled=false; }
+}
+
+async function loadWebhookSubscribers() {
+  const el = document.getElementById('discord-sub-list');
+  try {
+    const rows = await (await fetch('/admin/api/webhook-subscribers')).json();
+    if (!rows.length) { el.innerHTML = '<span style="font-size:.8rem;color:var(--txt3)">No webhook subscribers yet.</span>'; return; }
+    el.innerHTML = `<table class="sla-table">
+      <thead><tr><th>Webhook URL</th><th>Added</th><th></th></tr></thead>
+      <tbody>${rows.map(r => `<tr>
+        <td style="font-size:.78rem;font-family:monospace;color:var(--txt2);max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.url)}</td>
+        <td style="color:var(--txt3);font-size:.78rem">${new Date(r.created_at).toLocaleDateString('en-GB')}</td>
+        <td><button class="btn-danger" style="padding:3px 10px;font-size:.75rem" onclick="deleteWebhookSubscriber('${esc(r.id)}',this)">Remove</button></td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  } catch(e) { toast(e.message,'err'); }
+}
+
+async function deleteWebhookSubscriber(id, btn) {
+  btn.disabled = true;
+  try {
+    await fetch('/admin/api/webhook-subscribers/' + id, { method:'DELETE' });
+    await loadWebhookSubscribers(); toast('Webhook removed','ok');
+  } catch(e) { toast(e.message,'err'); btn.disabled=false; }
+}
+
+// ─── System ───────────────────────────────────────────────────────────────────
+function loadConfig() {
+  const cooldown = document.getElementById('cfg-cooldown');
+  const webhook  = document.getElementById('cfg-webhook');
+  // These are static values reflected from config — webhook masked for security
+  cooldown.textContent = '30 min (default)';
+  webhook.textContent  = 'configured';
+}
+
+async function sendTestEmail() {
+  const to  = document.getElementById('test-email-to').value.trim();
+  const el  = document.getElementById('email-test-result');
+  if (!to) { toast('Enter a recipient address', 'err'); return; }
+  el.textContent = 'Sending…'; el.style.color = 'var(--txt3)';
+  try {
+    const r = await fetch('/admin/api/email/test', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({to}) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    el.textContent = '✓ Test email delivered to ' + to; el.style.color = 'var(--green)';
+    toast('Test email sent', 'ok');
+  } catch(e) {
+    el.textContent = '✗ ' + e.message; el.style.color = 'var(--red)';
+    toast(e.message, 'err');
+  }
+}
+
+async function testWebhook(type) {
+  const el = document.getElementById('webhook-result');
+  el.textContent = 'Sending…'; el.style.color = 'var(--txt3)';
+  try {
+    const r = await fetch('/admin/api/webhook/test', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({type}) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    el.textContent = '✓ Message delivered to Discord'; el.style.color = 'var(--green)';
+    toast('Webhook test sent','ok');
+  } catch(e) {
+    el.textContent = '✗ ' + e.message; el.style.color = 'var(--red)';
+    toast(e.message,'err');
+  }
+}
+
+let pruneCallback = null;
+function confirmPrune() {
+  const days = document.getElementById('prune-days').value;
+  showConfirm(
+    'Prune history',
+    `This will permanently delete all history records older than ${days} days. This cannot be undone.`,
+    async () => {
+      try {
+        const r = await fetch('/admin/api/prune-history', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({days}) });
+        const d = await r.json(); if (!r.ok) throw new Error(d.error);
+        toast(`Deleted ${d.deleted.toLocaleString()} rows`,'ok');
+      } catch(e) { toast(e.message,'err'); }
+    }
+  );
+}
+
+// ─── Confirm modal ────────────────────────────────────────────────────────────
+function showConfirm(title, body, cb) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-body').textContent  = body;
+  pruneCallback = cb;
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+function closeConfirm() { document.getElementById('confirm-overlay').classList.remove('open'); pruneCallback=null; }
+document.getElementById('confirm-ok').onclick = () => { closeConfirm(); pruneCallback?.(); };
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+let toastTimer;
+function toast(msg,type='ok') {
+  const el=document.getElementById('toast'); el.textContent=msg; el.className='show '+type;
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>{el.className='';},3200);
+}
+function toggleNav(){document.getElementById('nav-drawer').classList.toggle('open');document.getElementById('nav-overlay').classList.toggle('open');}
+function closeNav(){document.getElementById('nav-drawer').classList.remove('open');document.getElementById('nav-overlay').classList.remove('open');}
+
+// keyboard shortcuts
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeConfirm(); closeSvcForm(); } });
+
+init();
+</script>
+</body>
+</html>

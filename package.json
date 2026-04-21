@@ -1,0 +1,18 @@
+{
+  "name": "custom-status-page",
+  "version": "1.0.0",
+  "description": "Modern custom status page with MySQL",
+  "main": "index.js",
+  "scripts": {
+    "prestart": "npm install --prefer-offline --silent",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
+    "mysql2": "^3.6.5",
+    "discord.js": "^14.16.3",
+    "nodemailer": "^6.10.1"
+  }
+}

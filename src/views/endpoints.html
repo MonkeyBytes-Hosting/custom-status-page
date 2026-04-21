@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Endpoints — Status Page</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:      #07070e;
+    --surface: rgba(255,255,255,0.04);
+    --surface2:rgba(255,255,255,0.07);
+    --border:  rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --txt:     #e8e8f0;
+    --txt2:    #8888aa;
+    --txt3:    #5a5a78;
+    --accent:  #7c5cfc;
+    --accent2: #5b3de8;
+    --green:   #22c55e;
+    --red:     #ef4444;
+    --yellow:  #f59e0b;
+    --gray:    #3a3a52;
+    --r:       14px;
+    --r-sm:    8px;
+  }
+  html { font-size: 15px; }
+  body { background: var(--bg); color: var(--txt); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% -10%, rgba(124,92,252,.12) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 110%, rgba(6,182,212,.08) 0%, transparent 55%);
+  }
+  .wrap { position: relative; z-index: 1; max-width: 980px; margin: 0 auto; padding: 0 24px 80px; }
+
+  /* Header */
+  header { padding: 48px 0 32px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+  .page-title { font-size: 1.35rem; font-weight: 700; letter-spacing: -.02em; }
+  .page-title span { color: var(--txt2); font-weight: 400; font-size: .9rem; margin-left: 6px; }
+  .btn-add { display: flex; align-items: center; gap: 7px; padding: 8px 18px; border-radius: 999px; background: var(--accent); border: none; cursor: pointer; color: #fff; font-size: .85rem; font-weight: 600; transition: background .2s, transform .1s; }
+  .btn-add:hover  { background: var(--accent2); }
+  .btn-add:active { transform: scale(.97); }
+  .btn-cancel-form { display: flex; align-items: center; gap: 7px; padding: 8px 18px; border-radius: 999px; background: transparent; border: 1px solid var(--border); cursor: pointer; color: var(--txt2); font-size: .85rem; font-weight: 600; transition: all .2s; }
+  .btn-cancel-form:hover { border-color: var(--border2); color: var(--txt); }
+
+  /* Form panel */
+  .form-panel {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
+    padding: 24px 28px; margin-bottom: 28px;
+    backdrop-filter: blur(12px);
+    display: none;
+  }
+  .form-panel.visible { display: block; }
+  .form-panel h2 { font-size: 1rem; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+  .form-panel h2 .edit-badge { font-size: .7rem; padding: 2px 10px; border-radius: 999px; background: rgba(124,92,252,.15); color: #a78bfa; border: 1px solid rgba(124,92,252,.25); font-weight: 600; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px; }
+  @media(max-width:600px) { .form-grid { grid-template-columns: 1fr; } }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field.full { grid-column: 1 / -1; }
+  .field label { font-size: .75rem; font-weight: 600; color: var(--txt2); text-transform: uppercase; letter-spacing: .05em; }
+  .field input, .field select {
+    padding: 10px 14px; border-radius: var(--r-sm);
+    background: rgba(255,255,255,.05); border: 1px solid var(--border);
+    color: var(--txt); font-size: .9rem; outline: none; transition: border-color .2s;
+  }
+  .field input::placeholder { color: var(--txt3); }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field select option { background: #1a1a2e; }
+  .tags-input-wrap { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--r-sm); background: rgba(255,255,255,.05); min-height: 44px; cursor: text; transition: border-color .2s; align-items: center; }
+  .tags-input-wrap:focus-within { border-color: var(--accent); }
+  .tag-chip { display: flex; align-items: center; gap: 5px; background: rgba(124,92,252,.18); border: 1px solid rgba(124,92,252,.3); color: #c4b5fd; font-size: .75rem; padding: 2px 8px; border-radius: 999px; }
+  .tag-chip button { background: none; border: none; cursor: pointer; color: #c4b5fd; font-size: .8rem; padding: 0 1px; line-height: 1; }
+  .tags-input-wrap input { flex: 1; min-width: 80px; background: none; border: none; color: var(--txt); font-size: .85rem; outline: none; padding: 0; }
+  .new-cat-field { display: none; }
+  .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+  .btn-save { padding: 9px 22px; border-radius: 999px; border: none; background: var(--accent); color: #fff; font-size: .85rem; font-weight: 600; cursor: pointer; transition: background .2s, transform .1s; }
+  .btn-save:hover  { background: var(--accent2); }
+  .btn-save:active { transform: scale(.97); }
+  .btn-save:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+  /* Endpoint list */
+  .list-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .list-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; color: var(--txt3); }
+  .search-input { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--txt); font-size: .8rem; padding: 6px 12px; outline: none; transition: border-color .2s; width: 200px; }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--txt3); }
+
+  /* Endpoint row */
+  .endpoint-row {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
+    padding: 16px 20px; margin-bottom: 8px;
+    backdrop-filter: blur(8px);
+    display: flex; align-items: center; gap: 16px;
+    transition: border-color .2s, background .2s;
+    position: relative; overflow: hidden;
+  }
+  .endpoint-row:hover { border-color: var(--border2); background: var(--surface2); }
+  .endpoint-row::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--green); border-radius: 3px 0 0 3px; transition: background .3s; }
+  .endpoint-row.down::before     { background: var(--red); }
+  .endpoint-row.degraded::before { background: var(--yellow); }
+  .endpoint-row.pending::before  { background: var(--gray); }
+
+  .row-info { flex: 1; min-width: 0; }
+  .row-name { font-size: .92rem; font-weight: 600; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row-url  { font-size: .75rem; color: var(--txt2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row-meta { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .cat-badge { font-size: .72rem; padding: 3px 10px; border-radius: 999px; background: rgba(255,255,255,.06); border: 1px solid var(--border); color: var(--txt2); white-space: nowrap; }
+  .tag { font-size: .68rem; padding: 2px 9px; border-radius: 999px; background: rgba(124,92,252,.12); border: 1px solid rgba(124,92,252,.22); color: rgba(167,139,250,.9); font-weight: 500; }
+  .tags-row { display: flex; gap: 5px; flex-wrap: nowrap; overflow: hidden; max-width: 160px; }
+  .status-pill { display: flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; font-size: .73rem; font-weight: 600; white-space: nowrap; }
+  .status-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .pill-up       { color: var(--green);  background: rgba(34,197,94,.1); }
+  .pill-down     { color: var(--red);    background: rgba(239,68,68,.1); }
+  .pill-degraded { color: var(--yellow); background: rgba(245,158,11,.1); }
+  .pill-pending  { color: var(--txt2);   background: rgba(255,255,255,.05); }
+  .row-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .btn-edit { padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--txt2); font-size: .78rem; cursor: pointer; transition: all .15s; display: flex; align-items: center; gap: 5px; }
+  .btn-edit:hover { border-color: var(--accent); color: #a78bfa; background: rgba(124,92,252,.08); }
+  .btn-del  { padding: 6px 12px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--txt3); font-size: .78rem; cursor: pointer; transition: all .15s; display: flex; align-items: center; }
+  .btn-del:hover { border-color: rgba(239,68,68,.3); color: var(--red); background: rgba(239,68,68,.08); }
+
+  /* Drag handle */
+  .drag-handle { display:flex; align-items:center; color:var(--txt3); cursor:grab; padding:0 12px 0 0; flex-shrink:0; opacity:.45; transition:opacity .15s; }
+  .endpoint-row:hover .drag-handle { opacity:1; }
+  .drag-handle:active { cursor:grabbing; }
+  .endpoint-row.drag-over { border-color:var(--accent); background:rgba(124,92,252,.07); box-shadow:0 0 0 1px var(--accent); }
+  .endpoint-row.dragging  { opacity:.35; }
+  .row-order { min-width:22px; text-align:right; font-size:.72rem; font-weight:700; color:var(--txt3); flex-shrink:0; margin-right:6px; }
+
+  /* Empty */
+  .empty { text-align: center; padding: 80px 20px; color: var(--txt2); }
+  .empty .icon { font-size: 3rem; margin-bottom: 16px; opacity: .4; }
+  .empty p { font-size: 1rem; margin-bottom: 8px; color: var(--txt); }
+
+  /* Toast */
+  #toast { position: fixed; bottom: 28px; right: 28px; z-index: 200; background: #1c1c38; border: 1px solid var(--border2); border-radius: 12px; padding: 12px 20px; font-size: .85rem; color: var(--txt); box-shadow: 0 8px 32px rgba(0,0,0,.4); transform: translateY(20px); opacity: 0; transition: all .3s; pointer-events: none; }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.ok  { border-color: rgba(34,197,94,.35); }
+  #toast.err { border-color: rgba(239,68,68,.35); color: #fca5a5; }
+
+  /* Burger / Nav drawer */
+  .burger { position: fixed; top: 14px; left: 14px; z-index: 150; width: 36px; height: 36px; background: rgba(0,0,0,.55); border: 1px solid var(--border); border-radius: 9px; cursor: pointer; color: var(--txt2); display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); transition: color .2s, background .2s; }
+  .burger:hover { color: var(--txt); background: rgba(255,255,255,.08); }
+  .nav-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.6); backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .nav-overlay.open { opacity: 1; pointer-events: all; }
+  .nav-drawer { position: fixed; top: 0; left: 0; bottom: 0; z-index: 201; width: 260px; background: #0d0d1e; border-right: 1px solid var(--border2); display: flex; flex-direction: column; transform: translateX(-100%); transition: transform .28s cubic-bezier(.4,0,.2,1); }
+  .nav-drawer.open { transform: translateX(0); }
+  .nav-drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 20px 20px 16px; border-bottom: 1px solid var(--border); }
+  .nav-drawer-head strong { font-size: .95rem; }
+  .nav-close { background: none; border: none; cursor: pointer; color: var(--txt2); font-size: 1.25rem; line-height: 1; padding: 2px 6px; border-radius: 6px; transition: color .2s; }
+  .nav-close:hover { color: var(--txt); }
+  .nav-links { padding: 12px 8px; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+  .nav-footer { padding: 12px 8px; border-top: 1px solid var(--border); }
+  .nav-logout { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border-radius: 10px; background: none; border: none; color: var(--txt3); font-size: .88rem; font-weight: 500; cursor: pointer; transition: background .15s, color .15s; }
+  .nav-logout:hover { background: rgba(239,68,68,.1); color: #f87171; }
+  .nav-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; color: var(--txt2); text-decoration: none; font-size: .88rem; font-weight: 500; transition: background .15s, color .15s; }
+  .nav-link:hover { background: var(--surface2); color: var(--txt); }
+  .nav-link.active { background: rgba(124,92,252,.15); color: #a78bfa; }
+</style>
+</head>
+<body>
+
+<!-- Nav drawer -->
+<div class="nav-overlay" id="nav-overlay" onclick="closeNav()"></div>
+<nav class="nav-drawer" id="nav-drawer">
+  <div class="nav-drawer-head">
+    <strong>Navigation</strong>
+    <button class="nav-close" onclick="closeNav()">×</button>
+  </div>
+  <div class="nav-links">
+    <a href="/" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="2.5" fill="currentColor"/></svg>
+      Status Page
+    </a>
+    <a href="/admin" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.5L2 4.5v3c0 3.3 2.6 6.4 6 7 3.4-.6 6-3.7 6-7v-3L8 1.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+      Admin
+    </a>
+    <a href="/endpoints" class="nav-link active">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Endpoints
+    </a>
+    <a href="/db" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><ellipse cx="8" cy="4.5" rx="5" ry="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 4.5v3c0 1.1 2.24 2 5 2s5-.9 5-2v-3" stroke="currentColor" stroke-width="1.5"/><path d="M3 7.5v3c0 1.1 2.24 2 5 2s5-.9 5-2v-3" stroke="currentColor" stroke-width="1.5"/></svg>
+      Database
+    </a>
+    <a href="/request" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v14M1 8h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      Request Monitoring
+    </a>
+  </div>
+  <div class="nav-footer">
+    <form method="POST" action="/logout">
+      <button type="submit" class="nav-logout">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M10 11l3-3-3-3M13 8H6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Sign out
+      </button>
+    </form>
+  </div>
+</nav>
+<button class="burger" onclick="toggleNav()">
+  <svg width="18" height="14" viewBox="0 0 18 14" fill="none"><path d="M0 1h18M0 7h18M0 13h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+</button>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="page-title">Endpoints <span>management</span></div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button class="btn-cancel-form" id="btn-cancel" style="display:none" onclick="cancelForm()">Cancel</button>
+      <button class="btn-add" onclick="openAdd()">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v11M1 6.5h11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Add endpoint
+      </button>
+    </div>
+  </header>
+
+  <!-- Add / Edit form panel -->
+  <div class="form-panel" id="form-panel">
+    <h2 id="form-title">
+      <span id="form-title-text">New endpoint</span>
+      <span class="edit-badge" id="edit-badge" style="display:none">Editing</span>
+    </h2>
+    <div class="form-grid">
+      <div class="field">
+        <label>Name</label>
+        <input id="f-name" type="text" placeholder="My API">
+      </div>
+      <div class="field">
+        <label>URL</label>
+        <input id="f-url" type="url" placeholder="https://example.com/health">
+      </div>
+      <div class="field">
+        <label>Category</label>
+        <select id="f-cat">
+          <option>General</option>
+          <option>Infrastructure</option>
+          <option>APIs</option>
+          <option>Websites</option>
+          <option>Databases</option>
+          <option>Third-party</option>
+          <option value="__new__">+ New category…</option>
+        </select>
+      </div>
+      <div class="field new-cat-field" id="new-cat-field">
+        <label>New category name</label>
+        <input id="f-newcat" type="text" placeholder="Custom Category">
+      </div>
+      <div class="field">
+        <label>RT alert threshold <span style="font-weight:400;text-transform:none;letter-spacing:0">(ms, optional)</span></label>
+        <input id="f-threshold" type="number" min="1" placeholder="e.g. 2000 — blank = disabled">
+      </div>
+      <div class="field full">
+        <label>Tags <span style="font-weight:400;text-transform:none;letter-spacing:0">(Enter or comma to add)</span></label>
+        <div class="tags-input-wrap" id="tags-wrap" onclick="document.getElementById('f-tag-input').focus()">
+          <input id="f-tag-input" type="text" placeholder="Add tag…">
+        </div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-cancel-form" onclick="cancelForm()">Cancel</button>
+      <button class="btn-save" id="btn-save" onclick="saveEndpoint()">Save endpoint</button>
+    </div>
+  </div>
+
+  <!-- List -->
+  <div class="list-header">
+    <div class="list-title" id="list-count">Loading…</div>
+    <input class="search-input" type="text" id="search" placeholder="Search endpoints…" oninput="filterList(this.value)">
+  </div>
+  <div id="endpoint-list"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+let services = [], editingId = null, pendingTags = [];
+
+async function init() {
+  await load();
+}
+
+async function load() {
+  try {
+    const r = await fetch('/api/services');
+    services = await r.json();
+    renderList(services);
+  } catch(e) { toast('Failed to load', 'err'); }
+}
+
+function renderList(list) {
+  document.getElementById('list-count').textContent = list.length + ' endpoint' + (list.length !== 1 ? 's' : '');
+  const el = document.getElementById('endpoint-list');
+  if (!list.length) {
+    el.innerHTML = `<div class="empty"><div class="icon">⬡</div><p>No endpoints yet.</p></div>`;
+    return;
+  }
+  el.innerHTML = list.map((s, i) => {
+    const st   = s.currentStatus || 'pending';
+    const tags = (s.tags||[]).slice(0,3).map(t => `<span class="tag">${esc(t)}</span>`).join('');
+    return `<div class="endpoint-row ${st}" draggable="true" data-id="${s.id}" id="row-${s.id}">
+      <div class="drag-handle" title="Drag to reorder">
+        <svg width="10" height="16" viewBox="0 0 10 16" fill="none">
+          <circle cx="3" cy="3"  r="1.4" fill="currentColor"/>
+          <circle cx="3" cy="8"  r="1.4" fill="currentColor"/>
+          <circle cx="3" cy="13" r="1.4" fill="currentColor"/>
+          <circle cx="8" cy="3"  r="1.4" fill="currentColor"/>
+          <circle cx="8" cy="8"  r="1.4" fill="currentColor"/>
+          <circle cx="8" cy="13" r="1.4" fill="currentColor"/>
+        </svg>
+      </div>
+      <span class="row-order">${i + 1}</span>
+      <div class="row-info">
+        <div class="row-name">${esc(s.name)}</div>
+        <div class="row-url">${esc(s.url)}</div>
+      </div>
+      <div class="row-meta">
+        ${tags ? `<div class="tags-row">${tags}</div>` : ''}
+        <span class="cat-badge">${esc(s.category||'General')}</span>
+        <span class="status-pill pill-${st}"><span class="dot"></span>${st}</span>
+      </div>
+      <div class="row-actions">
+        <button class="btn-edit" onclick="openEdit('${s.id}')">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M9 2l2 2-7 7H2V9l7-7z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+          Edit
+        </button>
+        <button class="btn-del" onclick="deleteEndpoint('${s.id}')" title="Delete">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1 1l11 11M12 1L1 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+  attachDragEvents();
+}
+
+function filterList(q) {
+  const filtered = q
+    ? services.filter(s =>
+        s.name.toLowerCase().includes(q.toLowerCase()) ||
+        s.url.toLowerCase().includes(q.toLowerCase()) ||
+        (s.category||'').toLowerCase().includes(q.toLowerCase()) ||
+        (s.tags||[]).some(t => t.toLowerCase().includes(q.toLowerCase()))
+      )
+    : services;
+  renderList(filtered);
+}
+
+// ── Form ──────────────────────────────────────────────────────────────────────
+function openAdd() {
+  editingId = null;
+  pendingTags = [];
+  document.getElementById('f-name').value      = '';
+  document.getElementById('f-url').value       = '';
+  document.getElementById('f-cat').value       = 'General';
+  document.getElementById('f-newcat').value    = '';
+  document.getElementById('new-cat-field').style.display = 'none';
+  document.getElementById('f-threshold').value = '';
+  document.getElementById('f-tag-input').value = '';
+  renderTagChips();
+  document.getElementById('form-title-text').textContent = 'New endpoint';
+  document.getElementById('edit-badge').style.display = 'none';
+  document.getElementById('btn-save').textContent = 'Save endpoint';
+  showForm();
+  setTimeout(() => document.getElementById('f-name').focus(), 80);
+}
+
+function openEdit(id) {
+  const s = services.find(x => x.id === id);
+  if (!s) return;
+  editingId   = id;
+  pendingTags = [...(s.tags||[])];
+  document.getElementById('f-name').value = s.name;
+  document.getElementById('f-url').value  = s.url;
+
+  const catSel = document.getElementById('f-cat');
+  const opt = [...catSel.options].find(o => o.value === s.category);
+  if (opt) { catSel.value = s.category; }
+  else {
+    // inject the custom category option
+    const newOpt = new Option(s.category, s.category);
+    catSel.insertBefore(newOpt, catSel.querySelector('option[value="__new__"]'));
+    catSel.value = s.category;
+  }
+  document.getElementById('new-cat-field').style.display = 'none';
+  document.getElementById('f-threshold').value = s.rt_threshold || '';
+  document.getElementById('f-tag-input').value = '';
+  renderTagChips();
+  document.getElementById('edit-badge').style.display = 'inline-flex';
+  document.getElementById('btn-save').textContent = 'Update endpoint';
+  showForm();
+  setTimeout(() => document.getElementById('f-name').focus(), 80);
+  document.getElementById('form-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function showForm() {
+  document.getElementById('form-panel').classList.add('visible');
+  document.getElementById('btn-cancel').style.display = 'flex';
+}
+function cancelForm() {
+  document.getElementById('form-panel').classList.remove('visible');
+  document.getElementById('btn-cancel').style.display = 'none';
+  editingId = null;
+}
+
+document.getElementById('f-cat').addEventListener('change', function() {
+  document.getElementById('new-cat-field').style.display = this.value === '__new__' ? 'flex' : 'none';
+  if (this.value === '__new__') document.getElementById('f-newcat').focus();
+});
+
+document.getElementById('f-tag-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(e.target.value.trim().replace(/,/g,'')); e.target.value = ''; }
+  else if (e.key === 'Backspace' && !e.target.value && pendingTags.length) { pendingTags.pop(); renderTagChips(); }
+});
+document.getElementById('tags-wrap').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-tag]');
+  if (btn) { pendingTags = pendingTags.filter(x => x !== btn.dataset.tag); renderTagChips(); }
+});
+function addTag(t) { if (!t || pendingTags.includes(t)) return; pendingTags.push(t); renderTagChips(); }
+function renderTagChips() {
+  const wrap = document.getElementById('tags-wrap'), inp = document.getElementById('f-tag-input');
+  wrap.querySelectorAll('.tag-chip').forEach(el => el.remove());
+  pendingTags.forEach(t => {
+    const chip = document.createElement('span');
+    chip.className = 'tag-chip';
+    chip.innerHTML = esc(t) + `<button data-tag="${esc(t)}" aria-label="Remove tag">×</button>`;
+    wrap.insertBefore(chip, inp);
+  });
+}
+
+async function saveEndpoint() {
+  const name   = document.getElementById('f-name').value.trim();
+  const url    = document.getElementById('f-url').value.trim();
+  const catSel = document.getElementById('f-cat').value;
+  const cat    = catSel === '__new__' ? (document.getElementById('f-newcat').value.trim() || 'General') : catSel;
+  const rawTag = document.getElementById('f-tag-input').value.trim();
+  if (rawTag) addTag(rawTag);
+
+  if (!name) { toast('Name is required', 'err'); return; }
+  if (!url)  { toast('URL is required', 'err');  return; }
+
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true;
+  btn.textContent = editingId ? 'Saving…' : 'Adding…';
+
+  const thresholdVal = document.getElementById('f-threshold').value.trim();
+  const threshold = thresholdVal ? parseInt(thresholdVal) : null;
+
+  try {
+    const method = editingId ? 'PUT' : 'POST';
+    const endpoint = editingId ? `/api/services/${editingId}` : '/api/services';
+    const r = await fetch(endpoint, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, url, category: cat, tags: pendingTags }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Error');
+
+    const svcId = editingId || data.id;
+    await fetch(`/api/services/${svcId}/threshold`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ms: threshold }),
+    });
+
+    toast(editingId ? 'Endpoint updated' : 'Endpoint added', 'ok');
+    cancelForm();
+    await load();
+  } catch(e) { toast(e.message, 'err'); }
+  finally {
+    btn.disabled = false;
+    btn.textContent = editingId ? 'Update endpoint' : 'Save endpoint';
+  }
+}
+
+async function deleteEndpoint(id) {
+  const s = services.find(x => x.id === id);
+  if (!confirm(`Delete "${s?.name}"? This also removes all history.`)) return;
+  try {
+    const r = await fetch('/api/services/' + id, { method: 'DELETE' });
+    if (!r.ok) throw new Error((await r.json()).error);
+    toast('Endpoint deleted', 'ok');
+    if (editingId === id) cancelForm();
+    await load();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ── Drag-and-drop reorder ──────────────────────────────────────────────────────
+let dragSrcId = null;
+
+function attachDragEvents() {
+  document.querySelectorAll('#endpoint-list .endpoint-row[draggable]').forEach(el => {
+    el.addEventListener('dragstart', e => {
+      dragSrcId = el.dataset.id;
+      el.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', dragSrcId);
+    });
+    el.addEventListener('dragend', () => {
+      el.classList.remove('dragging');
+      document.querySelectorAll('#endpoint-list .endpoint-row').forEach(c => c.classList.remove('drag-over'));
+    });
+    el.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (el.dataset.id !== dragSrcId) el.classList.add('drag-over');
+    });
+    el.addEventListener('dragleave', e => {
+      if (!el.contains(e.relatedTarget)) el.classList.remove('drag-over');
+    });
+    el.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      el.classList.remove('drag-over');
+      const toId = el.dataset.id;
+      if (!dragSrcId || dragSrcId === toId) return;
+      const fromIdx = services.findIndex(s => s.id === dragSrcId);
+      const toIdx   = services.findIndex(s => s.id === toId);
+      if (fromIdx === -1 || toIdx === -1) return;
+      const [item] = services.splice(fromIdx, 1);
+      services.splice(toIdx, 0, item);
+      renderList(services);
+      saveOrder();
+    });
+  });
+}
+
+async function saveOrder() {
+  const order = services.map((s, i) => ({ id: s.id, position: i }));
+  try {
+    const r = await fetch('/api/services/reorder', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed');
+    toast('Order saved', 'ok');
+  } catch(e) { toast('Failed to save order: ' + e.message, 'err'); }
+}
+
+// Enter to submit
+document.querySelectorAll('#f-name,#f-url,#f-newcat').forEach(el =>
+  el.addEventListener('keydown', e => { if (e.key === 'Enter') saveEndpoint(); })
+);
+
+// Nav drawer
+function toggleNav() { document.getElementById('nav-drawer').classList.toggle('open'); document.getElementById('nav-overlay').classList.toggle('open'); }
+function closeNav()  { document.getElementById('nav-drawer').classList.remove('open');  document.getElementById('nav-overlay').classList.remove('open'); }
+
+let toastTimer = null;
+function toast(msg, type='ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'show ' + type;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.className = ''; }, 3200);
+}
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+init();
+</script>
+</body>
+</html>

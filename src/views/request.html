@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Request Monitoring — Status Page</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:      #07070e;
+    --surface: rgba(255,255,255,0.04);
+    --surface2:rgba(255,255,255,0.07);
+    --border:  rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --txt:     #e8e8f0;
+    --txt2:    #8888aa;
+    --txt3:    #5a5a78;
+    --accent:  #7c5cfc;
+    --accent2: #5b3de8;
+    --green:   #22c55e;
+    --red:     #ef4444;
+    --yellow:  #f59e0b;
+    --gray:    #3a3a52;
+    --r:       14px;
+    --r-sm:    8px;
+  }
+  html { font-size: 15px; }
+  body { background: var(--bg); color: var(--txt); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; overflow-x: hidden; }
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% -10%, rgba(124,92,252,.12) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 110%, rgba(6,182,212,.08) 0%, transparent 55%);
+  }
+  .wrap { position: relative; z-index: 1; max-width: 660px; margin: 0 auto; padding: 0 24px 80px; }
+  header { padding: 48px 0 36px; display: flex; align-items: center; gap: 14px; }
+  .back-btn { display: flex; align-items: center; gap: 7px; color: var(--txt2); text-decoration: none; font-size: .82rem; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); transition: all .2s; }
+  .back-btn:hover { color: var(--txt); border-color: var(--border2); }
+  .header-title h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -.03em; }
+  .header-title p  { color: var(--txt2); font-size: .87rem; margin-top: 4px; }
+
+  .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 36px 36px 32px; backdrop-filter: blur(12px); }
+  .section-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--txt3); margin: 28px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .section-label:first-child { margin-top: 0; }
+
+  .field { margin-bottom: 18px; }
+  .field label { display: flex; align-items: center; gap: 6px; font-size: .77rem; font-weight: 600; color: var(--txt2); margin-bottom: 7px; text-transform: uppercase; letter-spacing: .05em; }
+  .field label .req { color: var(--accent); }
+  .field input, .field select, .field textarea {
+    width: 100%; padding: 11px 14px; border-radius: var(--r-sm);
+    background: rgba(255,255,255,.05); border: 1px solid var(--border);
+    color: var(--txt); font-size: .9rem; outline: none; transition: border-color .2s;
+    font-family: inherit;
+  }
+  .field input::placeholder, .field textarea::placeholder { color: var(--txt3); }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+  .field select option { background: #1a1a2e; }
+  .field textarea { resize: vertical; min-height: 80px; line-height: 1.55; }
+  .field-hint { font-size: .73rem; color: var(--txt3); margin-top: 5px; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media(max-width:500px) { .two-col { grid-template-columns: 1fr; } .form-card { padding: 24px 20px; } }
+
+  /* Priority tiles */
+  .priority-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .priority-tile { position: relative; cursor: pointer; }
+  .priority-tile input[type=radio] { position: absolute; opacity: 0; width: 0; height: 0; }
+  .priority-tile label {
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    padding: 12px 6px; border-radius: var(--r-sm); border: 1px solid var(--border);
+    background: rgba(255,255,255,.03); cursor: pointer; font-size: .75rem;
+    font-weight: 600; color: var(--txt2); transition: all .18s; text-transform: none; letter-spacing: 0;
+    text-align: center;
+  }
+  .priority-tile input:checked + label { border-color: var(--accent); background: rgba(124,92,252,.12); color: var(--txt); }
+  .priority-tile label .icon { font-size: 1.3rem; }
+  .priority-tile.urgent  input:checked + label { border-color: var(--red);    background: rgba(239,68,68,.1);    color: var(--red);    }
+  .priority-tile.high    input:checked + label { border-color: var(--yellow); background: rgba(245,158,11,.1);  color: var(--yellow); }
+  .priority-tile.normal  input:checked + label { border-color: var(--accent); background: rgba(124,92,252,.12); color: #a78bfa; }
+  .priority-tile.low     input:checked + label { border-color: var(--gray);   background: rgba(58,58,82,.25);   color: var(--txt2);   }
+
+  /* Checkbox toggles */
+  .toggle-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r-sm); background: rgba(255,255,255,.03); border: 1px solid var(--border); cursor: pointer; transition: border-color .2s; }
+  .toggle-row:hover { border-color: var(--border2); }
+  .toggle-row + .toggle-row { margin-top: 8px; }
+  .toggle-row input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+  .toggle-row .tlabel { flex: 1; }
+  .toggle-row .tlabel strong { font-size: .85rem; display: block; }
+  .toggle-row .tlabel span   { font-size: .75rem; color: var(--txt2); }
+
+  /* Service type chips */
+  .type-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .type-tile { position: relative; }
+  .type-tile input[type=radio] { position: absolute; opacity: 0; width: 0; height: 0; }
+  .type-tile label {
+    display: flex; align-items: center; gap: 8px; padding: 9px 12px;
+    border-radius: var(--r-sm); border: 1px solid var(--border);
+    background: rgba(255,255,255,.03); cursor: pointer; font-size: .8rem;
+    font-weight: 500; color: var(--txt2); transition: all .18s; text-transform: none; letter-spacing: 0;
+  }
+  .type-tile input:checked + label { border-color: var(--accent); background: rgba(124,92,252,.12); color: var(--txt); }
+
+  /* Submit */
+  .form-footer { margin-top: 32px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .btn-submit { padding: 12px 32px; border-radius: 999px; border: none; background: var(--accent); color: #fff; font-size: .9rem; font-weight: 600; cursor: pointer; transition: background .2s, transform .1s; }
+  .btn-submit:hover  { background: var(--accent2); }
+  .btn-submit:active { transform: scale(.97); }
+  .btn-submit:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+  .submit-note { font-size: .75rem; color: var(--txt3); }
+
+  /* Toast */
+  #toast { position: fixed; bottom: 28px; right: 28px; z-index: 200; background: #1c1c38; border: 1px solid var(--border2); border-radius: 12px; padding: 12px 20px; font-size: .85rem; color: var(--txt); box-shadow: 0 8px 32px rgba(0,0,0,.4); transform: translateY(20px); opacity: 0; transition: all .3s; pointer-events: none; }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.ok  { border-color: rgba(34,197,94,.35); }
+  #toast.err { border-color: rgba(239,68,68,.35); color: #fca5a5; }
+
+  /* Success screen */
+  .success-screen { display: none; text-align: center; padding: 60px 20px; }
+  .success-screen.show { display: block; }
+  .success-icon { font-size: 4rem; margin-bottom: 20px; }
+  .success-screen h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 10px; }
+  .success-screen p  { color: var(--txt2); font-size: .9rem; max-width: 380px; margin: 0 auto 28px; line-height: 1.6; }
+  .btn-back { display: inline-flex; align-items: center; gap: 8px; padding: 11px 28px; border-radius: 999px; border: 1px solid var(--border2); background: var(--surface2); color: var(--txt); text-decoration: none; font-size: .88rem; font-weight: 600; transition: all .2s; }
+  .btn-back:hover { background: rgba(255,255,255,.1); }
+
+  /* Burger / nav drawer */
+  .burger { position: fixed; top: 14px; left: 14px; z-index: 150; width: 36px; height: 36px; background: rgba(0,0,0,.55); border: 1px solid var(--border); border-radius: 9px; cursor: pointer; color: var(--txt2); display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); transition: color .2s, background .2s; }
+  .burger:hover { color: var(--txt); background: rgba(255,255,255,.08); }
+  .nav-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.6); backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .nav-overlay.open { opacity: 1; pointer-events: all; }
+  .nav-drawer { position: fixed; top: 0; left: 0; bottom: 0; z-index: 201; width: 260px; background: #0d0d1e; border-right: 1px solid var(--border2); display: flex; flex-direction: column; transform: translateX(-100%); transition: transform .28s cubic-bezier(.4,0,.2,1); }
+  .nav-drawer.open { transform: translateX(0); }
+  .nav-drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 20px 20px 16px; border-bottom: 1px solid var(--border); }
+  .nav-drawer-head strong { font-size: .95rem; letter-spacing: -.01em; }
+  .nav-close { background: none; border: none; cursor: pointer; color: var(--txt2); font-size: 1.25rem; line-height: 1; padding: 2px 6px; border-radius: 6px; transition: color .2s; }
+  .nav-close:hover { color: var(--txt); }
+  .nav-links { padding: 12px 8px; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+  .nav-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; color: var(--txt2); text-decoration: none; font-size: .88rem; font-weight: 500; transition: background .15s, color .15s; }
+  .nav-link:hover { background: var(--surface2); color: var(--txt); }
+  .nav-link.active { background: rgba(124,92,252,.15); color: #a78bfa; }
+</style>
+</head>
+<body>
+
+<!-- Nav drawer -->
+<div class="nav-overlay" id="nav-overlay" onclick="closeNav()"></div>
+<nav class="nav-drawer" id="nav-drawer">
+  <div class="nav-drawer-head">
+    <strong>Navigation</strong>
+    <button class="nav-close" onclick="closeNav()">×</button>
+  </div>
+  <div class="nav-links">
+    <a href="/" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="2.5" fill="currentColor"/></svg>
+      Status Page
+    </a>
+    <a href="/admin" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.5L2 4.5v3c0 3.3 2.6 6.4 6 7 3.4-.6 6-3.7 6-7v-3L8 1.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+      Admin
+    </a>
+    <a href="/endpoints" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Endpoints
+    </a>
+    <a href="/db" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><ellipse cx="8" cy="4.5" rx="5" ry="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 4.5v3c0 1.1 2.24 2 5 2s5-.9 5-2v-3" stroke="currentColor" stroke-width="1.5"/><path d="M3 7.5v3c0 1.1 2.24 2 5 2s5-.9 5-2v-3" stroke="currentColor" stroke-width="1.5"/></svg>
+      Database
+    </a>
+    <a href="/request" class="nav-link active">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v14M1 8h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      Request Monitoring
+    </a>
+  </div>
+</nav>
+<button class="burger" onclick="toggleNav()">
+  <svg width="18" height="14" viewBox="0 0 18 14" fill="none"><path d="M0 1h18M0 7h18M0 13h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+</button>
+
+<div class="wrap">
+  <header>
+    <a href="/" class="back-btn">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Back
+    </a>
+    <div class="header-title">
+      <h1>Request Monitoring</h1>
+      <p>Submit a service for inclusion on the status page.</p>
+    </div>
+  </header>
+
+  <!-- Success screen (hidden until submit) -->
+  <div class="success-screen" id="success-screen">
+    <div class="success-icon">✅</div>
+    <h2>Request submitted!</h2>
+    <p>Your monitoring request has been received and will be reviewed shortly. You'll be contacted via Discord or the email you provided.</p>
+    <a href="/" class="btn-back">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Back to status page
+    </a>
+  </div>
+
+  <div class="form-card" id="form-card">
+    <form id="req-form" onsubmit="submitForm(event)">
+
+      <div class="section-label">Service details</div>
+
+      <div class="field">
+        <label>Service name <span class="req">*</span></label>
+        <input id="f-name" type="text" placeholder="My Website" required autocomplete="off">
+      </div>
+
+      <div class="field">
+        <label>URL <span class="req">*</span></label>
+        <input id="f-url" type="url" placeholder="https://example.com" required autocomplete="off">
+        <div class="field-hint">The exact URL that will be monitored (health endpoint if available).</div>
+      </div>
+
+      <div class="section-label">Service type</div>
+      <div class="type-grid">
+        <div class="type-tile">
+          <input type="radio" name="service_type" id="t-website" value="Website" checked>
+          <label for="t-website">🌐 Website</label>
+        </div>
+        <div class="type-tile">
+          <input type="radio" name="service_type" id="t-api" value="API">
+          <label for="t-api">⚡ API</label>
+        </div>
+        <div class="type-tile">
+          <input type="radio" name="service_type" id="t-app" value="App">
+          <label for="t-app">📱 App</label>
+        </div>
+        <div class="type-tile">
+          <input type="radio" name="service_type" id="t-db" value="Database">
+          <label for="t-db">🗄️ Database</label>
+        </div>
+        <div class="type-tile">
+          <input type="radio" name="service_type" id="t-infra" value="Infrastructure">
+          <label for="t-infra">🖧 Infrastructure</label>
+        </div>
+        <div class="type-tile">
+          <input type="radio" name="service_type" id="t-other" value="Other">
+          <label for="t-other">🔧 Other</label>
+        </div>
+      </div>
+
+      <div class="section-label">Category &amp; description</div>
+
+      <div class="two-col">
+        <div class="field">
+          <label>Category</label>
+          <select id="f-cat">
+            <option>General</option>
+            <option>Infrastructure</option>
+            <option>APIs</option>
+            <option>Websites</option>
+            <option>Databases</option>
+            <option>Third-party</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Expected uptime</label>
+          <select id="f-uptime">
+            <option value="">Not sure</option>
+            <option>99.9% (high availability)</option>
+            <option>99% (standard)</option>
+            <option>95% (best effort)</option>
+            <option>Development / staging</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Description</label>
+        <textarea id="f-desc" placeholder="Briefly describe what this service does and why it needs monitoring…"></textarea>
+      </div>
+
+      <div class="section-label">Priority</div>
+      <div class="priority-grid">
+        <div class="priority-tile urgent">
+          <input type="radio" name="priority" id="p-urgent" value="urgent">
+          <label for="p-urgent"><span class="icon">🔴</span>Urgent</label>
+        </div>
+        <div class="priority-tile high">
+          <input type="radio" name="priority" id="p-high" value="high">
+          <label for="p-high"><span class="icon">🟡</span>High</label>
+        </div>
+        <div class="priority-tile normal">
+          <input type="radio" name="priority" id="p-normal" value="normal" checked>
+          <label for="p-normal"><span class="icon">🟢</span>Normal</label>
+        </div>
+        <div class="priority-tile low">
+          <input type="radio" name="priority" id="p-low" value="low">
+          <label for="p-low"><span class="icon">⚪</span>Low</label>
+        </div>
+      </div>
+
+      <div class="section-label">Notification preferences</div>
+      <label class="toggle-row" for="n-down">
+        <input type="checkbox" id="n-down" checked>
+        <div class="tlabel">
+          <strong>Alert on outage</strong>
+          <span>Notify when this service goes down or becomes degraded</span>
+        </div>
+      </label>
+      <label class="toggle-row" for="n-recover">
+        <input type="checkbox" id="n-recover" checked>
+        <div class="tlabel">
+          <strong>Alert on recovery</strong>
+          <span>Notify when this service comes back online</span>
+        </div>
+      </label>
+
+      <div class="section-label">Contact information</div>
+      <div class="two-col">
+        <div class="field">
+          <label>Discord user ID</label>
+          <input id="f-discord" type="text" placeholder="123456789012345678" autocomplete="off">
+          <div class="field-hint">Your numeric Discord ID — right-click your name → Copy ID.</div>
+        </div>
+        <div class="field">
+          <label>Email address</label>
+          <input id="f-contact" type="email" placeholder="you@example.com" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Additional notes</label>
+        <textarea id="f-notes" placeholder="Anything else we should know — auth headers, special ports, maintenance windows…"></textarea>
+      </div>
+
+      <div class="form-footer">
+        <button type="submit" class="btn-submit" id="btn-submit">Submit request</button>
+        <span class="submit-note">Fields marked <span style="color:var(--accent)">*</span> are required. Requests are usually reviewed within 24 hours.</span>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+async function submitForm(e) {
+  e.preventDefault();
+  const name = document.getElementById('f-name').value.trim();
+  const url  = document.getElementById('f-url').value.trim();
+  if (!name || !url) { toast('Name and URL are required', 'err'); return; }
+
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = true; btn.textContent = 'Submitting…';
+
+  const body = {
+    name,
+    url,
+    service_type:   document.querySelector('input[name=service_type]:checked')?.value || 'Website',
+    category:       document.getElementById('f-cat').value,
+    description:    document.getElementById('f-desc').value.trim(),
+    priority:       document.querySelector('input[name=priority]:checked')?.value || 'normal',
+    notify_down:    document.getElementById('n-down').checked    ? '1' : '',
+    notify_recover: document.getElementById('n-recover').checked ? '1' : '',
+    discord_id:     document.getElementById('f-discord').value.trim(),
+    contact:        document.getElementById('f-contact').value.trim(),
+    notes:          document.getElementById('f-notes').value.trim(),
+  };
+
+  try {
+    const r = await fetch('/request/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Error');
+    document.getElementById('form-card').style.display    = 'none';
+    document.getElementById('success-screen').classList.add('show');
+  } catch(err) {
+    toast(err.message, 'err');
+    btn.disabled = false; btn.textContent = 'Submit request';
+  }
+}
+
+let toastTimer;
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'show ' + type;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.className = ''; }, 3500);
+}
+function toggleNav() { document.getElementById('nav-drawer').classList.toggle('open'); document.getElementById('nav-overlay').classList.toggle('open'); }
+function closeNav()  { document.getElementById('nav-drawer').classList.remove('open');  document.getElementById('nav-overlay').classList.remove('open'); }
+</script>
+</body>
+</html>

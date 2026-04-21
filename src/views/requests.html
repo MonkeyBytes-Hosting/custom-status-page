@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Monitoring Requests — Admin</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:      #07070e;
+    --surface: rgba(255,255,255,0.04);
+    --surface2:rgba(255,255,255,0.07);
+    --border:  rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --txt:     #e8e8f0;
+    --txt2:    #8888aa;
+    --txt3:    #5a5a78;
+    --accent:  #7c5cfc;
+    --accent2: #5b3de8;
+    --green:   #22c55e;
+    --red:     #ef4444;
+    --yellow:  #f59e0b;
+    --gray:    #3a3a52;
+    --r:       14px;
+    --r-sm:    8px;
+  }
+  html { font-size: 15px; }
+  body { background: var(--bg); color: var(--txt); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; overflow-x: hidden; }
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% -10%, rgba(124,92,252,.12) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 110%, rgba(6,182,212,.08) 0%, transparent 55%);
+  }
+  .wrap { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 0 24px 80px; }
+  header { padding: 48px 0 32px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .header-left h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -.03em; }
+  .header-left p  { color: var(--txt2); font-size: .85rem; margin-top: 4px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 28px; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 4px; width: fit-content; }
+  .tab-btn { padding: 6px 18px; border-radius: 999px; border: none; background: none; color: var(--txt2); font-size: .82rem; font-weight: 600; cursor: pointer; transition: all .2s; }
+  .tab-btn.active { background: var(--accent); color: #fff; }
+
+  /* Cards */
+  .req-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 22px 24px; margin-bottom: 12px; backdrop-filter: blur(12px); transition: border-color .2s; position: relative; }
+  .req-card:hover { border-color: var(--border2); }
+  .req-card.approved { border-left: 3px solid var(--green); }
+  .req-card.rejected { border-left: 3px solid var(--red); opacity: .65; }
+  .req-card.pending  { border-left: 3px solid var(--accent); }
+
+  .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .card-info .svc-name { font-size: 1rem; font-weight: 700; margin-bottom: 3px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card-info .svc-url  { font-size: .78rem; color: var(--txt2); word-break: break-all; }
+  .card-badges { display: flex; align-items: center; gap: 7px; flex-shrink: 0; flex-wrap: wrap; }
+
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: .72rem; font-weight: 600; white-space: nowrap; }
+  .badge-pending  { background: rgba(124,92,252,.12); color: #a78bfa; border: 1px solid rgba(124,92,252,.25); }
+  .badge-approved { background: rgba(34,197,94,.1);   color: var(--green);  border: 1px solid rgba(34,197,94,.25); }
+  .badge-rejected { background: rgba(239,68,68,.1);   color: var(--red);    border: 1px solid rgba(239,68,68,.25); }
+  .badge-urgent   { background: rgba(239,68,68,.1);   color: var(--red);    border: 1px solid rgba(239,68,68,.2); }
+  .badge-high     { background: rgba(245,158,11,.1);  color: var(--yellow); border: 1px solid rgba(245,158,11,.2); }
+  .badge-normal   { background: rgba(255,255,255,.05);color: var(--txt2);   border: 1px solid var(--border); }
+  .badge-low      { background: rgba(58,58,82,.3);    color: var(--txt3);   border: 1px solid var(--border); }
+  .badge-type     { background: rgba(6,182,212,.08);  color: #67e8f9;       border: 1px solid rgba(6,182,212,.2); }
+
+  .meta-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; margin-bottom: 14px; }
+  .meta-item { background: rgba(255,255,255,.03); border-radius: var(--r-sm); padding: 8px 12px; border: 1px solid var(--border); }
+  .meta-item .m-label { font-size: .67rem; color: var(--txt3); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 3px; }
+  .meta-item .m-val   { font-size: .82rem; color: var(--txt); word-break: break-all; }
+
+  .desc-block { font-size: .82rem; color: var(--txt2); line-height: 1.6; padding: 10px 12px; background: rgba(255,255,255,.025); border-radius: var(--r-sm); margin-bottom: 14px; border: 1px solid var(--border); }
+  .desc-block:empty { display: none; }
+
+  .card-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .btn-approve { padding: 8px 20px; border-radius: 999px; border: none; background: var(--green); color: #fff; font-size: .82rem; font-weight: 600; cursor: pointer; transition: background .2s, transform .1s; }
+  .btn-approve:hover  { background: #16a34a; }
+  .btn-approve:active { transform: scale(.97); }
+  .btn-reject  { padding: 8px 20px; border-radius: 999px; border: 1px solid var(--border2); background: transparent; color: var(--txt2); font-size: .82rem; font-weight: 600; cursor: pointer; transition: all .2s; }
+  .btn-reject:hover  { border-color: var(--red); color: var(--red); background: rgba(239,68,68,.08); }
+  .btn-delete  { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--txt3); font-size: .82rem; cursor: pointer; transition: all .2s; margin-left: auto; }
+  .btn-delete:hover { border-color: var(--red); color: var(--red); background: rgba(239,68,68,.08); }
+  .req-date { font-size: .72rem; color: var(--txt3); margin-left: auto; white-space: nowrap; padding-top: 2px; }
+
+  /* Empty */
+  .empty { text-align: center; padding: 60px 20px; color: var(--txt2); }
+  .empty .icon { font-size: 2.5rem; margin-bottom: 14px; opacity: .4; }
+
+  /* Toast */
+  #toast { position: fixed; bottom: 28px; right: 28px; z-index: 200; background: #1c1c38; border: 1px solid var(--border2); border-radius: 12px; padding: 12px 20px; font-size: .85rem; color: var(--txt); box-shadow: 0 8px 32px rgba(0,0,0,.4); transform: translateY(20px); opacity: 0; transition: all .3s; pointer-events: none; }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.ok  { border-color: rgba(34,197,94,.35); }
+  #toast.err { border-color: rgba(239,68,68,.35); color: #fca5a5; }
+
+  /* Burger / nav drawer */
+  .burger { position: fixed; top: 14px; left: 14px; z-index: 150; width: 36px; height: 36px; background: rgba(0,0,0,.55); border: 1px solid var(--border); border-radius: 9px; cursor: pointer; color: var(--txt2); display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); transition: color .2s, background .2s; }
+  .burger:hover { color: var(--txt); background: rgba(255,255,255,.08); }
+  .nav-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.6); backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .nav-overlay.open { opacity: 1; pointer-events: all; }
+  .nav-drawer { position: fixed; top: 0; left: 0; bottom: 0; z-index: 201; width: 260px; background: #0d0d1e; border-right: 1px solid var(--border2); display: flex; flex-direction: column; transform: translateX(-100%); transition: transform .28s cubic-bezier(.4,0,.2,1); }
+  .nav-drawer.open { transform: translateX(0); }
+  .nav-drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 20px 20px 16px; border-bottom: 1px solid var(--border); }
+  .nav-drawer-head strong { font-size: .95rem; }
+  .nav-close { background: none; border: none; cursor: pointer; color: var(--txt2); font-size: 1.25rem; line-height: 1; padding: 2px 6px; border-radius: 6px; transition: color .2s; }
+  .nav-close:hover { color: var(--txt); }
+  .nav-links { padding: 12px 8px; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+  .nav-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; color: var(--txt2); text-decoration: none; font-size: .88rem; font-weight: 500; transition: background .15s, color .15s; }
+  .nav-link:hover { background: var(--surface2); color: var(--txt); }
+  .nav-link.active { background: rgba(124,92,252,.15); color: #a78bfa; }
+  .nav-footer { padding: 12px 16px 20px; border-top: 1px solid var(--border); }
+  .btn-signout { width: 100%; padding: 9px; border-radius: 10px; border: 1px solid var(--border); background: none; color: var(--txt2); font-size: .84rem; cursor: pointer; transition: all .2s; }
+  .btn-signout:hover { background: rgba(239,68,68,.08); border-color: rgba(239,68,68,.3); color: var(--red); }
+</style>
+</head>
+<body>
+
+<div class="nav-overlay" id="nav-overlay" onclick="closeNav()"></div>
+<nav class="nav-drawer" id="nav-drawer">
+  <div class="nav-drawer-head">
+    <strong>Navigation</strong>
+    <button class="nav-close" onclick="closeNav()">×</button>
+  </div>
+  <div class="nav-links">
+    <a href="/" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="2.5" fill="currentColor"/></svg>
+      Status Page
+    </a>
+    <a href="/admin" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.5L2 4.5v3c0 3.3 2.6 6.4 6 7 3.4-.6 6-3.7 6-7v-3L8 1.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+      Admin
+    </a>
+    <a href="/endpoints" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Endpoints
+    </a>
+    <a href="/db" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><ellipse cx="8" cy="4.5" rx="5" ry="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 4.5v3c0 1.1 2.24 2 5 2s5-.9 5-2v-3" stroke="currentColor" stroke-width="1.5"/><path d="M3 7.5v3c0 1.1 2.24 2 5 2s5-.9 5-2v-3" stroke="currentColor" stroke-width="1.5"/></svg>
+      Database
+    </a>
+    <a href="/requests" class="nav-link active">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 8h6M5 5.5h6M5 10.5h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      Requests
+    </a>
+  </div>
+  <div class="nav-footer">
+    <form method="POST" action="/logout">
+      <button class="btn-signout" type="submit">Sign out</button>
+    </form>
+  </div>
+</nav>
+<button class="burger" onclick="toggleNav()">
+  <svg width="18" height="14" viewBox="0 0 18 14" fill="none"><path d="M0 1h18M0 7h18M0 13h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+</button>
+
+<div class="wrap">
+  <header>
+    <div class="header-left">
+      <h1>Monitoring Requests</h1>
+      <p>Review and approve service monitoring requests from clients.</p>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="setTab('pending')">Pending <span id="badge-pending"></span></button>
+    <button class="tab-btn" onclick="setTab('approved')">Approved</button>
+    <button class="tab-btn" onclick="setTab('rejected')">Rejected</button>
+    <button class="tab-btn" onclick="setTab('all')">All</button>
+  </div>
+
+  <div id="list"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+let requests = [], activeTab = 'pending';
+
+async function load() {
+  try {
+    const r = await fetch('/requests/api/list');
+    requests = await r.json();
+    const pending = requests.filter(r => r.status === 'pending').length;
+    document.getElementById('badge-pending').textContent = pending ? `(${pending})` : '';
+    render();
+  } catch(e) { document.getElementById('list').innerHTML = `<div class="empty"><div class="icon">⚠️</div><p>Failed to load requests.</p></div>`; }
+}
+
+function setTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', ['pending','approved','rejected','all'][i] === tab);
+  });
+  render();
+}
+
+function render() {
+  const visible = activeTab === 'all' ? requests : requests.filter(r => r.status === activeTab);
+  const list = document.getElementById('list');
+  if (!visible.length) {
+    list.innerHTML = `<div class="empty"><div class="icon">📋</div><p>No ${activeTab === 'all' ? '' : activeTab + ' '}requests.</p></div>`;
+    return;
+  }
+  list.innerHTML = visible.map(r => cardHTML(r)).join('');
+}
+
+function cardHTML(r) {
+  const statusBadge = `<span class="badge badge-${r.status}">${r.status}</span>`;
+  const priorityBadge = `<span class="badge badge-${r.priority}">${r.priority}</span>`;
+  const typeBadge = `<span class="badge badge-type">${esc(r.service_type)}</span>`;
+  const date = new Date(r.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+
+  const metaItems = [
+    r.category    ? `<div class="meta-item"><div class="m-label">Category</div><div class="m-val">${esc(r.category)}</div></div>` : '',
+    r.discord_id  ? `<div class="meta-item"><div class="m-label">Discord ID</div><div class="m-val">${esc(r.discord_id)}</div></div>` : '',
+    r.contact     ? `<div class="meta-item"><div class="m-label">Email</div><div class="m-val">${esc(r.contact)}</div></div>` : '',
+    `<div class="meta-item"><div class="m-label">Notify on</div><div class="m-val">${[r.notify_down?'Outage':'', r.notify_recover?'Recovery':''].filter(Boolean).join(', ') || 'None'}</div></div>`,
+  ].filter(Boolean).join('');
+
+  const actions = r.status === 'pending' ? `
+    <button class="btn-approve" onclick="approve('${r.id}')">✓ Approve</button>
+    <button class="btn-reject"  onclick="reject('${r.id}')">Reject</button>
+    <span class="req-date">${date}</span>
+    <button class="btn-delete"  onclick="del('${r.id}')" title="Delete">🗑</button>
+  ` : `
+    <span class="req-date">${date}</span>
+    <button class="btn-delete" onclick="del('${r.id}')" title="Delete">🗑</button>
+  `;
+
+  return `<div class="req-card ${r.status}" id="card-${r.id}">
+    <div class="card-top">
+      <div class="card-info">
+        <div class="svc-name">${esc(r.name)} ${statusBadge} ${priorityBadge} ${typeBadge}</div>
+        <div class="svc-url">${esc(r.url)}</div>
+      </div>
+    </div>
+    ${r.description ? `<div class="desc-block">${esc(r.description)}</div>` : ''}
+    ${r.notes       ? `<div class="desc-block"><strong>Notes:</strong> ${esc(r.notes)}</div>` : ''}
+    <div class="meta-grid">${metaItems}</div>
+    <div class="card-actions">${actions}</div>
+  </div>`;
+}
+
+async function approve(id) {
+  try {
+    const r = await fetch(`/requests/api/approve/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    requests = requests.map(r => r.id === id ? { ...r, status: 'approved' } : r);
+    const pending = requests.filter(r => r.status === 'pending').length;
+    document.getElementById('badge-pending').textContent = pending ? `(${pending})` : '';
+    render(); toast('Approved — service is now being monitored', 'ok');
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function reject(id) {
+  try {
+    const r = await fetch(`/requests/api/reject/${id}`, { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    requests = requests.map(r => r.id === id ? { ...r, status: 'rejected' } : r);
+    const pending = requests.filter(r => r.status === 'pending').length;
+    document.getElementById('badge-pending').textContent = pending ? `(${pending})` : '';
+    render(); toast('Request rejected', 'ok');
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function del(id) {
+  if (!confirm('Delete this request?')) return;
+  try {
+    const r = await fetch(`/requests/api/delete/${id}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error((await r.json()).error);
+    requests = requests.filter(r => r.id !== id);
+    render(); toast('Deleted', 'ok');
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+let toastTimer;
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'show ' + type;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.className = ''; }, 3500);
+}
+function toggleNav() { document.getElementById('nav-drawer').classList.toggle('open'); document.getElementById('nav-overlay').classList.toggle('open'); }
+function closeNav()  { document.getElementById('nav-drawer').classList.remove('open');  document.getElementById('nav-overlay').classList.remove('open'); }
+
+load();
+</script>
+</body>
+</html>

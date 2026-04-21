@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Status</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#7c5cfc">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:      #07070e;
+    --surface: rgba(255,255,255,0.04);
+    --surface2:rgba(255,255,255,0.07);
+    --border:  rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --txt:     #e8e8f0;
+    --txt2:    #8888aa;
+    --txt3:    #5a5a78;
+    --accent:  #7c5cfc;
+    --accent2: #5b3de8;
+    --green:   #22c55e;
+    --red:     #ef4444;
+    --yellow:  #f59e0b;
+    --gray:    #3a3a52;
+    --r:       14px;
+    --r-sm:    8px;
+  }
+  html { font-size: 15px; }
+  body { background: var(--bg); color: var(--txt); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; overflow-x: hidden; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% -10%, rgba(124,92,252,.12) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 110%, rgba(6,182,212,.08) 0%, transparent 55%);
+  }
+  .wrap { position: relative; z-index: 1; max-width: 980px; margin: 0 auto; padding: 0 24px 80px; }
+
+  /* Header */
+  header { padding: 48px 0 32px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px rgba(34,197,94,.2),0 0 12px rgba(34,197,94,.4); animation: pulse-dot 2.4s ease-in-out infinite; }
+  @keyframes pulse-dot { 0%,100% { box-shadow: 0 0 0 3px rgba(34,197,94,.2),0 0 12px rgba(34,197,94,.4); } 50% { box-shadow: 0 0 0 6px rgba(34,197,94,.1),0 0 20px rgba(34,197,94,.6); } }
+  .logo h1 { font-size: 1.35rem; font-weight: 700; letter-spacing: -.02em; }
+  .logo span { color: var(--txt2); font-weight: 400; font-size: .9rem; margin-left: 4px; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  #overall-badge { display: flex; align-items: center; gap: 7px; padding: 6px 14px; border-radius: 999px; background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.25); font-size: .8rem; font-weight: 600; color: var(--green); transition: all .3s; }
+  #overall-badge.degraded { background: rgba(245,158,11,.1); border-color: rgba(245,158,11,.25); color: var(--yellow); }
+  #overall-badge.down     { background: rgba(239,68,68,.1);  border-color: rgba(239,68,68,.25);  color: var(--red); }
+  .badge-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .btn-add { display: flex; align-items: center; gap: 7px; padding: 8px 18px; border-radius: 999px; background: var(--accent); border: none; cursor: pointer; color: #fff; font-size: .85rem; font-weight: 600; transition: background .2s, transform .1s; }
+  .btn-add:hover  { background: var(--accent2); }
+  .btn-add:active { transform: scale(.97); }
+
+  /* Summary */
+  .summary { display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: 12px; margin-bottom: 36px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 18px 20px; backdrop-filter: blur(12px); }
+  .stat-card .label { font-size: .75rem; color: var(--txt2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+  .stat-card .value { font-size: 1.6rem; font-weight: 700; letter-spacing: -.03em; }
+  .stat-card .value.green  { color: var(--green); }
+  .stat-card .value.red    { color: var(--red); }
+
+  /* Filters */
+  .range-row { display: flex; align-items: center; gap: 6px; margin-bottom: 20px; }
+  .range-btn { padding: 4px 13px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--txt3); font-size: .75rem; font-weight: 600; cursor: pointer; transition: all .2s; letter-spacing: .02em; }
+  .range-btn:hover  { border-color: var(--border2); color: var(--txt2); }
+  .range-btn.active { background: var(--surface2); border-color: var(--border2); color: var(--txt); }
+  .range-label { font-size: .72rem; color: var(--txt3); margin-right: 4px; }
+  .filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .filter-btn { padding: 5px 14px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--txt2); font-size: .8rem; cursor: pointer; transition: all .2s; }
+  .filter-btn:hover  { border-color: var(--border2); color: var(--txt); }
+  .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* Category group */
+  .category-group { margin-bottom: 32px; }
+  .category-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; color: var(--txt3); margin-bottom: 10px; padding-left: 2px; }
+
+  /* ── Section divider ── */
+  .section-divider { display: flex; align-items: center; gap: 14px; margin: 32px 0 16px; }
+  .section-divider-line { flex: 1; height: 1px; background: var(--border); }
+  .section-divider-label { display: flex; align-items: center; gap: 8px; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--txt3); white-space: nowrap; }
+  .sd-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .sd-own    { background: var(--accent); }
+  .sd-client { background: var(--green); }
+
+  /* Service card */
+  .service-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 20px 22px; margin-bottom: 10px; backdrop-filter: blur(12px); transition: border-color .2s, background .2s; position: relative; overflow: hidden; }
+  .service-card:hover { border-color: var(--border2); background: var(--surface2); }
+  .service-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--green); border-radius: 3px 0 0 3px; transition: background .3s; }
+  .service-card.down::before        { background: var(--red); }
+  .service-card.degraded::before    { background: var(--yellow); }
+  .service-card.pending::before     { background: var(--gray); }
+  .service-card.maintenance::before { background: #06b6d4; }
+  .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .card-info { flex: 1; min-width: 0; }
+  .card-name { font-size: .95rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+  .card-url  { font-size: .75rem; color: var(--txt2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .status-pill { display: flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: .75rem; font-weight: 600; white-space: nowrap; }
+  .status-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .pill-up       { color: var(--green);  background: rgba(34,197,94,.1); }
+  .pill-down     { color: var(--red);    background: rgba(239,68,68,.1); }
+  .pill-degraded { color: var(--yellow); background: rgba(245,158,11,.1); }
+  .pill-pending      { color: var(--txt2);   background: rgba(255,255,255,.05); }
+  .pill-maintenance  { color: #67e8f9;     background: rgba(6,182,212,.1); }
+  .rt-badge { font-size: .72rem; color: var(--txt2); white-space: nowrap; padding: 3px 8px; background: rgba(255,255,255,.05); border-radius: 6px; }
+  .btn-delete { background: none; border: none; cursor: pointer; color: var(--txt3); font-size: 1rem; padding: 4px 6px; border-radius: 6px; transition: color .2s, background .2s; }
+  .btn-delete:hover { color: var(--red); background: rgba(239,68,68,.1); }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .tag { font-size: .68rem; padding: 2px 9px; border-radius: 999px; background: rgba(124,92,252,.12); border: 1px solid rgba(124,92,252,.22); color: rgba(167,139,250,.9); font-weight: 500; }
+  .uptime-row { display: flex; align-items: center; gap: 10px; }
+  .bars-wrap { flex: 1; display: flex; gap: 2px; height: 28px; align-items: center; }
+  .bar { flex: 1; height: 22px; border-radius: 3px; min-width: 2px; transition: height .2s; cursor: default; }
+  .bar:hover { height: 28px; }
+  .bar.up       { background: var(--green);  opacity: .75; }
+  .bar.down     { background: var(--red);    opacity: .8; }
+  .bar.degraded { background: var(--yellow); opacity: .8; }
+  .bar.no-data  { background: var(--gray);   opacity: .35; }
+  .uptime-pct { font-size: .75rem; font-weight: 600; white-space: nowrap; min-width: 46px; text-align: right; color: var(--green); }
+  .uptime-pct.low { color: var(--red); }
+
+  /* Modal */
+  .overlay { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.65); backdrop-filter: blur(6px); align-items: center; justify-content: center; padding: 24px; }
+  .overlay.open { display: flex; }
+  .modal { background: #11112a; border: 1px solid var(--border2); border-radius: 20px; padding: 32px; width: 100%; max-width: 480px; box-shadow: 0 40px 100px rgba(0,0,0,.5); animation: modal-in .25s cubic-bezier(.34,1.4,.64,1); }
+  @keyframes modal-in { from { opacity:0; transform: scale(.93) translateY(12px); } to { opacity:1; transform: scale(1) translateY(0); } }
+  .modal h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 24px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: .77rem; font-weight: 600; color: var(--txt2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .05em; }
+  .field input, .field select { width: 100%; padding: 10px 14px; border-radius: var(--r-sm); background: rgba(255,255,255,.05); border: 1px solid var(--border); color: var(--txt); font-size: .9rem; outline: none; transition: border-color .2s; }
+  .field input::placeholder { color: var(--txt3); }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field select option { background: #1a1a2e; }
+  .tags-input-wrap { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--r-sm); background: rgba(255,255,255,.05); min-height: 44px; cursor: text; transition: border-color .2s; }
+  .tags-input-wrap:focus-within { border-color: var(--accent); }
+  .tag-chip { display: flex; align-items: center; gap: 5px; background: rgba(124,92,252,.18); border: 1px solid rgba(124,92,252,.3); color: #c4b5fd; font-size: .75rem; padding: 2px 8px; border-radius: 999px; }
+  .tag-chip button { background: none; border: none; cursor: pointer; color: #c4b5fd; font-size: .75rem; padding: 0 1px; line-height: 1; }
+  .tags-input-wrap input { flex: 1; min-width: 80px; background: none; border: none; color: var(--txt); font-size: .85rem; outline: none; padding: 0; }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+  .btn-cancel { padding: 9px 20px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--txt2); font-size: .85rem; cursor: pointer; transition: all .2s; }
+  .btn-cancel:hover { border-color: var(--border2); color: var(--txt); }
+  .btn-submit { padding: 9px 22px; border-radius: 999px; border: none; background: var(--accent); color: #fff; font-size: .85rem; font-weight: 600; cursor: pointer; transition: background .2s, transform .1s; }
+  .btn-submit:hover  { background: var(--accent2); }
+  .btn-submit:active { transform: scale(.97); }
+  .btn-submit:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+  /* Chart modal */
+  .chart-modal { max-width: 700px; }
+  .chart-wrap { position:relative; height:220px; margin:16px 0; }
+  .chart-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:18px; }
+  .chart-stat { background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
+  .chart-stat .cs-label { font-size:.68rem; color:var(--txt3); text-transform:uppercase; letter-spacing:.07em; margin-bottom:4px; }
+  .chart-stat .cs-val { font-size:1.2rem; font-weight:700; }
+
+  /* Empty */
+  .empty { text-align: center; padding: 80px 20px; color: var(--txt2); }
+  .empty .icon { font-size: 3rem; margin-bottom: 16px; opacity: .4; }
+  .empty p { font-size: 1rem; margin-bottom: 8px; color: var(--txt); }
+  .empty small { font-size: .82rem; }
+
+  /* Toast */
+  #toast { position: fixed; bottom: 28px; right: 28px; z-index: 200; background: #1c1c38; border: 1px solid var(--border2); border-radius: 12px; padding: 12px 20px; font-size: .85rem; color: var(--txt); box-shadow: 0 8px 32px rgba(0,0,0,.4); transform: translateY(20px); opacity: 0; transition: all .3s; pointer-events: none; }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.ok  { border-color: rgba(34,197,94,.35); }
+  #toast.err { border-color: rgba(239,68,68,.35); color: #fca5a5; }
+
+  /* Incident banners */
+  #incident-banners { position:sticky; top:0; z-index:40; }
+  .inc-banner { display:flex; align-items:center; gap:12px; padding:12px 20px; font-size:.85rem; font-weight:500; animation:banner-in .3s ease; }
+  @keyframes banner-in { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+  .inc-banner.minor    { background:rgba(245,158,11,.18); border-bottom:1px solid rgba(245,158,11,.3); color:#fbbf24; }
+  .inc-banner.major    { background:rgba(239,68,68,.18);  border-bottom:1px solid rgba(239,68,68,.3);  color:#fca5a5; }
+  .inc-banner.critical { background:rgba(124,58,237,.25); border-bottom:1px solid rgba(124,58,237,.4); color:#c4b5fd; }
+  .inc-banner-dot { width:8px; height:8px; border-radius:50%; background:currentColor; flex-shrink:0; animation:pulse-dot 2s ease-in-out infinite; }
+  .inc-banner-body { flex:1; min-width:0; }
+  .inc-banner-title { font-weight:700; }
+  .inc-banner-msg { font-size:.78rem; opacity:.85; margin-top:1px; }
+  .inc-banner-dismiss { background:none; border:none; cursor:pointer; color:currentColor; opacity:.6; font-size:1rem; padding:2px 6px; border-radius:4px; transition:opacity .15s; flex-shrink:0; }
+  .inc-banner-dismiss:hover { opacity:1; }
+
+  /* Live indicator */
+  #conn { position: fixed; top: 14px; right: 14px; z-index: 50; font-size: .7rem; padding: 4px 10px; border-radius: 999px; background: rgba(0,0,0,.5); border: 1px solid var(--border); color: var(--txt3); display: flex; align-items: center; gap: 5px; backdrop-filter: blur(8px); }
+  #conn .cdot { width: 6px; height: 6px; border-radius: 50%; background: var(--gray); }
+  #conn.live .cdot { background: var(--green); }
+  #conn.live { color: var(--txt2); }
+  .last-updated { font-size: .72rem; color: var(--txt3); text-align: right; margin-bottom: 14px; }
+
+  @media(max-width:600px) {
+    .wrap { padding: 0 14px 60px; }
+    header { padding: 52px 0 20px; flex-direction: column; align-items: flex-start; gap: 12px; }
+    .header-right { width: 100%; justify-content: space-between; }
+    #overall-badge { font-size: .75rem; }
+    .btn-add { font-size: .8rem; padding: 7px 14px; }
+    .summary { grid-template-columns: repeat(2,1fr); gap: 8px; margin-bottom: 24px; }
+    .stat-card { padding: 14px 16px; }
+    .stat-card .value { font-size: 1.3rem; }
+    .filters { gap: 6px; }
+    .filter-btn { font-size: .75rem; padding: 4px 11px; }
+    .service-card { padding: 14px 16px; }
+    .card-top { flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+    .card-right { width: 100%; justify-content: flex-start; gap: 8px; }
+    .card-name { font-size: .88rem; }
+    .rt-badge { font-size: .68rem; }
+    .bars-wrap { height: 22px; }
+    .bar { height: 16px; border-radius: 2px; }
+    .bar:hover { height: 22px; }
+    .modal { padding: 22px 18px; border-radius: 16px; }
+    #toast { bottom: 16px; right: 16px; left: 16px; font-size: .82rem; }
+  }
+
+  /* ── Section divider ── */
+  .section-divider { display: flex; align-items: center; gap: 14px; margin: 36px 0 18px; }
+  .section-divider-line { flex: 1; height: 1px; background: var(--border); }
+  .section-divider-label { display: flex; align-items: center; gap: 8px; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--txt3); white-space: nowrap; }
+  .section-divider-label .sdot { width: 7px; height: 7px; border-radius: 50%; }
+  .sdot-own    { background: var(--accent); }
+  .sdot-client { background: var(--green); }
+
+  /* ── Drag handle ── */
+  .drag-handle { display: flex; align-items: center; color: var(--txt3); cursor: grab; padding: 0 8px 0 0; flex-shrink: 0; opacity: 0; transition: opacity .15s; }
+  .service-card:hover .drag-handle { opacity: 1; }
+  .drag-handle:active { cursor: grabbing; }
+  .service-card.drag-over { border-color: var(--accent); background: rgba(124,92,252,.06); }
+  .service-card.drag-over::after { content:''; position:absolute; left:0; right:0; top:-3px; height:3px; background:var(--accent); border-radius:3px; }
+  .service-card.dragging { opacity: .4; }
+
+  /* ── Subscribe strip ── */
+  .sub-strip { margin-top: 48px; padding: 28px 32px; border-radius: var(--r); background: var(--surface); border: 1px solid var(--border); backdrop-filter: blur(12px); display: flex; align-items: flex-start; gap: 24px; flex-wrap: wrap; }
+  .sub-strip-text { flex: 1; min-width: 180px; }
+  .sub-strip-text h3 { font-size: .95rem; font-weight: 700; margin-bottom: 4px; }
+  .sub-strip-text p  { font-size: .8rem; color: var(--txt2); line-height: 1.5; }
+  .notify-tabs-wrap { flex: 2; min-width: 280px; }
+  .notify-tabs { display: flex; gap: 4px; margin-bottom: 12px; }
+  .ntab { padding: 5px 14px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--txt2); font-size: .78rem; font-weight: 600; cursor: pointer; transition: all .2s; }
+  .ntab:hover  { border-color: var(--border2); color: var(--txt); }
+  .ntab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .sub-form { display: flex; gap: 8px; flex-wrap: wrap; }
+  .sub-input { flex: 1; min-width: 180px; padding: 9px 14px; border-radius: 999px; border: 1px solid var(--border); background: rgba(255,255,255,.05); color: var(--txt); font-size: .85rem; outline: none; transition: border-color .2s; }
+  .sub-input::placeholder { color: var(--txt3); }
+  .sub-input:focus { border-color: var(--accent); }
+  .sub-btn { display: inline-flex; align-items: center; padding: 9px 20px; border-radius: 999px; border: none; background: var(--accent); color: #fff; font-size: .85rem; font-weight: 600; cursor: pointer; white-space: nowrap; text-decoration: none; transition: background .2s, transform .1s; }
+  .sub-btn:hover  { background: var(--accent2); }
+  .sub-btn:active { transform: scale(.97); }
+  .sub-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+  .sub-hint { font-size: .74rem; color: var(--txt3); margin-top: 8px; line-height: 1.5; }
+  @media(max-width:600px) {
+    .sub-strip { padding: 20px 18px; gap: 14px; }
+    .sub-form { width: 100%; }
+    .sub-input { min-width: 0; }
+    .notify-tabs-wrap { min-width: 0; width: 100%; }
+  }
+
+  /* ── Burger / Nav drawer ── */
+  .burger { position: fixed; top: 14px; left: 14px; z-index: 150; width: 36px; height: 36px; background: rgba(0,0,0,.55); border: 1px solid var(--border); border-radius: 9px; cursor: pointer; color: var(--txt2); display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); transition: color .2s, background .2s; }
+  .burger:hover { color: var(--txt); background: rgba(255,255,255,.08); }
+  .nav-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.6); backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .nav-overlay.open { opacity: 1; pointer-events: all; }
+  .nav-drawer { position: fixed; top: 0; left: 0; bottom: 0; z-index: 201; width: 260px; background: #0d0d1e; border-right: 1px solid var(--border2); display: flex; flex-direction: column; transform: translateX(-100%); transition: transform .28s cubic-bezier(.4,0,.2,1); }
+  .nav-drawer.open { transform: translateX(0); }
+  .nav-drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 20px 20px 16px; border-bottom: 1px solid var(--border); }
+  .nav-drawer-head strong { font-size: .95rem; letter-spacing: -.01em; }
+  .nav-close { background: none; border: none; cursor: pointer; color: var(--txt2); font-size: 1.25rem; line-height: 1; padding: 2px 6px; border-radius: 6px; transition: color .2s; }
+  .nav-close:hover { color: var(--txt); }
+  .nav-links { padding: 12px 8px; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+  .nav-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; color: var(--txt2); text-decoration: none; font-size: .88rem; font-weight: 500; transition: background .15s, color .15s; }
+  .nav-link:hover { background: var(--surface2); color: var(--txt); }
+  .nav-link.active { background: rgba(124,92,252,.15); color: #a78bfa; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- Nav drawer -->
+<div class="nav-overlay" id="nav-overlay" onclick="closeNav()"></div>
+<nav class="nav-drawer" id="nav-drawer">
+  <div class="nav-drawer-head">
+    <strong>Navigation</strong>
+    <button class="nav-close" onclick="closeNav()">×</button>
+  </div>
+  <div class="nav-links">
+    <a href="/" class="nav-link active">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="2.5" fill="currentColor"/></svg>
+      Status Page
+    </a>
+    <a href="/admin" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.5L2 4.5v3c0 3.3 2.6 6.4 6 7 3.4-.6 6-3.7 6-7v-3L8 1.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+      Admin
+    </a>
+    <a href="/endpoints" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Endpoints
+    </a>
+    <a href="/db" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><ellipse cx="8" cy="4.5" rx="5" ry="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 4.5v3c0 1.1 2.24 2 5 2s5-.9 5-2v-3" stroke="currentColor" stroke-width="1.5"/><path d="M3 7.5v3c0 1.1 2.24 2 5 2s5-.9 5-2v-3" stroke="currentColor" stroke-width="1.5"/></svg>
+      Database
+    </a>
+    <a href="/request" class="nav-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v14M1 8h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      Request Monitoring
+    </a>
+  </div>
+  <div style="padding:12px 16px 20px;border-top:1px solid var(--border)">
+    <form method="POST" action="/logout">
+      <button type="submit" style="width:100%;padding:9px;border-radius:10px;border:1px solid var(--border);background:none;color:var(--txt2);font-size:.84rem;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.08)';this.style.borderColor='rgba(239,68,68,.3)';this.style.color='#f87171'" onmouseout="this.style.background='none';this.style.borderColor='var(--border)';this.style.color='var(--txt2)'">Sign out</button>
+    </form>
+  </div>
+</nav>
+<button class="burger" onclick="toggleNav()">
+  <svg width="18" height="14" viewBox="0 0 18 14" fill="none"><path d="M0 1h18M0 7h18M0 13h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+</button>
+
+<div id="incident-banners"></div>
+
+<div class="wrap">
+  <header>
+    <div class="logo">
+      <div class="logo-dot"></div>
+      <h1>Status <span>Page</span></h1>
+    </div>
+    <div class="header-right">
+      <div id="overall-badge"><span class="badge-dot"></span><span id="overall-text">All systems operational</span></div>
+<a href="/request" class="btn-add">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v11M1 6.5h11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Request monitoring
+      </a>
+    </div>
+  </header>
+
+  <div class="summary">
+    <div class="stat-card"><div class="label">Services</div><div class="value" id="stat-total">—</div></div>
+    <div class="stat-card"><div class="label">Operational</div><div class="value green" id="stat-up">—</div></div>
+    <div class="stat-card"><div class="label">Issues</div><div class="value red" id="stat-down">—</div></div>
+    <div class="stat-card"><div class="label">Avg response</div><div class="value" id="stat-rt">—</div></div>
+  </div>
+
+  <div class="range-row">
+    <span class="range-label">Uptime range</span>
+    <button class="range-btn active" data-hours="24"  onclick="setRange(24)">24h</button>
+    <button class="range-btn"        data-hours="168" onclick="setRange(168)">7d</button>
+    <button class="range-btn"        data-hours="720" onclick="setRange(720)">30d</button>
+  </div>
+  <div class="filters" id="filters"></div>
+  <div class="last-updated" id="last-updated"></div>
+  <div id="services-list"></div>
+
+  <!-- Notify / Subscribe strip -->
+  <div class="sub-strip">
+    <div class="sub-strip-text">
+      <h3>Stay informed</h3>
+      <p>Subscribe to status alerts via email, Discord webhook, or RSS.</p>
+    </div>
+    <div class="notify-tabs-wrap">
+      <div class="notify-tabs" id="notify-tabs">
+        <button class="ntab active" data-pane="email"   onclick="switchNTab('email')">Email</button>
+        <button class="ntab"        data-pane="discord" onclick="switchNTab('discord')">Discord</button>
+        <button class="ntab"        data-pane="rss"     onclick="switchNTab('rss')">RSS</button>
+      </div>
+      <div class="npane" id="np-email">
+        <div class="sub-form">
+          <input class="sub-input" id="sub-email" type="email" placeholder="you@example.com" autocomplete="email">
+          <button class="sub-btn" id="sub-btn" onclick="submitSubscribe()">Subscribe</button>
+        </div>
+      </div>
+      <div class="npane" id="np-discord" style="display:none">
+        <div class="sub-form">
+          <input class="sub-input" id="sub-discord" type="url" placeholder="https://discord.com/api/webhooks/…">
+          <button class="sub-btn" id="sub-discord-btn" onclick="submitDiscordWebhook()">Save</button>
+        </div>
+        <p class="sub-hint">Paste your Discord channel webhook URL. You'll receive a message whenever a service status changes.</p>
+      </div>
+      <div class="npane" id="np-rss" style="display:none">
+        <div class="sub-form">
+          <input class="sub-input" id="rss-url" value="/rss.xml" readonly onclick="this.select()">
+          <a class="sub-btn" href="/rss.xml" target="_blank" rel="noopener">Open feed</a>
+        </div>
+        <p class="sub-hint">Subscribe in any RSS reader to get incident and recovery updates.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add service modal -->
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h2>Add service</h2>
+    <div class="field">
+      <label>Name</label>
+      <input id="f-name" type="text" placeholder="My API" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>URL</label>
+      <input id="f-url" type="url" placeholder="https://example.com/health" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Category</label>
+      <select id="f-cat">
+        <option>General</option>
+        <option>Infrastructure</option>
+        <option>APIs</option>
+        <option>Websites</option>
+        <option>Databases</option>
+        <option>Third-party</option>
+        <option value="__new__">+ New category…</option>
+      </select>
+    </div>
+    <div class="field" id="new-cat-field" style="display:none">
+      <label>New category name</label>
+      <input id="f-newcat" type="text" placeholder="Custom Category">
+    </div>
+    <div class="field">
+      <label>Tags <span style="font-weight:400;text-transform:none;letter-spacing:0">(Enter or comma)</span></label>
+      <div class="tags-input-wrap" id="tags-wrap" onclick="document.getElementById('f-tag-input').focus()">
+        <input id="f-tag-input" type="text" placeholder="Add tag…">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-submit" id="btn-submit" onclick="submitService()">Add service</button>
+    </div>
+  </div>
+</div>
+
+<!-- Response time chart modal -->
+<div class="overlay" id="chart-overlay" onclick="if(event.target===this)closeChart()">
+  <div class="modal chart-modal">
+    <h2 id="chart-title">Response time</h2>
+    <div class="chart-stats">
+      <div class="chart-stat"><div class="cs-label">Avg</div><div class="cs-val" id="cs-avg">—</div></div>
+      <div class="chart-stat"><div class="cs-label">Min</div><div class="cs-val" id="cs-min">—</div></div>
+      <div class="chart-stat"><div class="cs-label">Max</div><div class="cs-val" id="cs-max">—</div></div>
+    </div>
+    <div class="chart-wrap"><canvas id="rt-chart"></canvas></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeChart()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="conn"><span class="cdot"></span> live</div>
+
+<script>
+let services = [], activeFilter = 'all', pendingTags = [], currentHours = 24;
+
+function setRange(hours) {
+  currentHours = hours;
+  document.querySelectorAll('.range-btn').forEach(b =>
+    b.classList.toggle('active', parseInt(b.dataset.hours) === hours)
+  );
+  loadServices().then(scheduleBgRefresh);
+}
+
+async function init() { await Promise.all([loadServices(), loadIncidentBanners()]); connectSSE(); }
+
+// ─── Incident banners ─────────────────────────────────────────────────────────
+let incidents = [];
+const dismissedInc = new Set(JSON.parse(sessionStorage.getItem('inc_dismissed') || '[]'));
+
+async function loadIncidentBanners() {
+  try {
+    incidents = await (await fetch('/api/incidents/active')).json();
+    renderBanners();
+  } catch {}
+}
+
+function renderBanners() {
+  const el = document.getElementById('incident-banners');
+  const visible = incidents.filter(i => !dismissedInc.has(i.id));
+  el.innerHTML = visible.map(i => `
+    <div class="inc-banner ${i.severity}" id="ibanner-${i.id}">
+      <span class="inc-banner-dot"></span>
+      <div class="inc-banner-body">
+        <div class="inc-banner-title">${esc(i.title)}</div>
+        ${i.body ? `<div class="inc-banner-msg">${esc(i.body)}</div>` : ''}
+      </div>
+      <button class="inc-banner-dismiss" onclick="dismissBanner('${i.id}')" title="Dismiss">✕</button>
+    </div>`).join('');
+}
+
+function dismissBanner(id) {
+  dismissedInc.add(id);
+  sessionStorage.setItem('inc_dismissed', JSON.stringify([...dismissedInc]));
+  renderBanners();
+}
+
+async function loadServices() {
+  try {
+    const r = await fetch(`/api/services?hours=${currentHours}`);
+    services = await r.json();
+    render();
+  } catch(e) { toast('Failed to load services', 'err'); }
+}
+
+let evtSrc = null, bgRefreshTimer = null;
+
+// Slow background sync every 60 s keeps bars accurate without hammering the API
+function scheduleBgRefresh() {
+  clearTimeout(bgRefreshTimer);
+  bgRefreshTimer = setTimeout(() => loadServices(), 60_000);
+}
+
+// Severity ranking for bar merging (worst-in-segment wins)
+const BAR_RANK = { 'no-data': 0, up: 1, degraded: 2, down: 3 };
+
+function applyCheckToService(svc, result) {
+  svc.currentStatus       = result.status;
+  svc.currentResponseTime = result.responseTime;
+
+  // Push result into the correct bar segment
+  if (svc.bars && svc.bars.length) {
+    const BAR_COUNT = currentHours <= 24 ? 144 : 90;
+    const cutoff    = Date.now() - currentHours * 3_600_000;
+    const segMs     = (currentHours * 3_600_000) / BAR_COUNT;
+    const idx       = Math.min(BAR_COUNT - 1, Math.max(0, Math.floor((Date.now() - cutoff) / segMs)));
+    const bar       = svc.bars[idx];
+    if (bar && (BAR_RANK[result.status] ?? 0) > (BAR_RANK[bar.status] ?? 0)) {
+      bar.status = result.status;
+    }
+    // Recalculate uptime from bar array
+    const known = svc.bars.filter(b => b.status !== 'no-data');
+    if (known.length) {
+      svc.uptime = ((known.filter(b => b.status === 'up').length / known.length) * 100).toFixed(2);
+    }
+  }
+}
+
+function patchCardDOM(svc) {
+  const el = document.getElementById('card-' + svc.id);
+  if (!el) { renderList(); return; }
+
+  // Card border colour
+  el.className = 'service-card ' + (svc.currentStatus || 'pending');
+
+  // Status pill
+  const pill = el.querySelector('.status-pill');
+  if (pill) {
+    pill.className = 'status-pill pill-' + (svc.currentStatus || 'pending');
+    pill.innerHTML = `<span class="dot"></span>${svc.currentStatus || 'pending'}`;
+  }
+
+  // Response time
+  const rt = el.querySelector('.rt-badge');
+  if (rt && svc.currentResponseTime != null) rt.textContent = svc.currentResponseTime + ' ms';
+
+  // Bars
+  const barsWrap = el.querySelector('.bars-wrap');
+  if (barsWrap) {
+    barsWrap.innerHTML = (svc.bars || []).map(b => {
+      const status = b.status || b;
+      const label  = b.time
+        ? new Date(b.time).toLocaleString('en-GB', { timeZone:'Europe/London', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) + ' — ' + status
+        : status;
+      return `<div class="bar ${status}" title="${label}"></div>`;
+    }).join('');
+  }
+
+  // Uptime %
+  const pct = el.querySelector('.uptime-pct');
+  if (pct && svc.uptime != null) {
+    pct.textContent = svc.uptime + '%';
+    pct.className = 'uptime-pct' + (parseFloat(svc.uptime) < 95 ? ' low' : '');
+  }
+}
+
+function connectSSE() {
+  if (evtSrc) evtSrc.close();
+  evtSrc = new EventSource('/api/events');
+  evtSrc.onopen = () => document.getElementById('conn').classList.add('live');
+  evtSrc.onmessage = e => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'check') {
+      const svc = services.find(s => s.id === msg.serviceId);
+      if (svc) {
+        applyCheckToService(svc, msg.result);
+        patchCardDOM(svc);
+        updateSummary();
+        setLastUpdated();
+      }
+    } else if (msg.type === 'service_added' || msg.type === 'service_updated' || msg.type === 'service_removed') {
+      loadServices();
+    } else if (msg.type === 'incident_created') {
+      incidents.unshift(msg.incident);
+      renderBanners();
+    } else if (msg.type === 'incident_resolved' || msg.type === 'incident_deleted') {
+      incidents = incidents.filter(i => i.id !== msg.id);
+      renderBanners();
+    }
+  };
+  evtSrc.onerror = () => {
+    document.getElementById('conn').classList.remove('live');
+    setTimeout(connectSSE, 3000);
+  };
+  scheduleBgRefresh();
+}
+
+function render() { renderFilters(); renderList(); updateSummary(); setLastUpdated(); }
+function setLastUpdated() { document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString(); }
+
+function renderFilters() {
+  const cats = ['all', ...new Set(services.map(s => s.category || 'General'))];
+  document.getElementById('filters').innerHTML = cats.map(c =>
+    `<button class="filter-btn ${activeFilter===c?'active':''}" onclick="setFilter('${c}')">${c==='all'?'All services':c}</button>`
+  ).join('');
+}
+function setFilter(cat) { activeFilter = cat; renderFilters(); renderList(); }
+
+function isClient(s) { return (s.tags||[]).some(t => t.toLowerCase() === 'client status'); }
+
+function renderList() {
+  const visible = activeFilter === 'all' ? services : services.filter(s => s.category === activeFilter);
+  const container = document.getElementById('services-list');
+  if (!visible.length) {
+    container.innerHTML = `<div class="empty"><div class="icon">⬡</div><p>${services.length ? 'No services in this category.' : 'No services yet.'}</p><small>Click <strong>Request monitoring</strong> to get started.</small></div>`;
+    return;
+  }
+
+  const own    = visible.filter(s => !isClient(s));
+  const client = visible.filter(s =>  isClient(s));
+  const hasBoth = own.length > 0 && client.length > 0;
+
+  let html = '';
+  if (own.length) {
+    if (hasBoth) html += `<div class="section-divider"><div class="section-divider-line"></div><div class="section-divider-label"><span class="sd-dot sd-own"></span>Our services</div><div class="section-divider-line"></div></div>`;
+    html += renderGrouped(own);
+  }
+  if (client.length) {
+    html += `<div class="section-divider"><div class="section-divider-line"></div><div class="section-divider-label"><span class="sd-dot sd-client"></span>Client services</div><div class="section-divider-line"></div></div>`;
+    html += renderGrouped(client);
+  }
+  container.innerHTML = html;
+}
+
+function renderGrouped(svcs) {
+  const grouped = {};
+  svcs.forEach(s => { const c = s.category||'General'; (grouped[c]=grouped[c]||[]).push(s); });
+  return Object.entries(grouped).map(([cat, ss]) =>
+    `<div class="category-group">
+      ${Object.keys(grouped).length > 1 ? `<div class="category-label">${cat}</div>` : ''}
+      ${ss.map(cardHTML).join('')}
+    </div>`
+  ).join('');
+}
+
+function cardHTML(s) {
+  const st   = s.currentStatus || 'pending';
+  const bars = (s.bars||[]).map(b => {
+    const status = b.status || b;
+    const label  = b.time ? new Date(b.time).toLocaleString('en-GB', { timeZone:'Europe/London', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) + ' — ' + status : status;
+    return `<div class="bar ${status}" title="${label}"></div>`;
+  }).join('');
+  const pct  = s.uptime != null ? s.uptime + '%' : '—';
+  const tags = (s.tags||[]).map(t => `<span class="tag">${esc(t)}</span>`).join('');
+  const rt   = s.currentResponseTime != null ? s.currentResponseTime + ' ms' : '';
+  return `<div class="service-card ${st}" id="card-${s.id}">
+    <div class="card-top">
+      <div class="card-info">
+        <div class="card-name" style="cursor:pointer" onclick="openChart('${s.id}','${esc(s.name)}')" title="View response time">${esc(s.name)}</div>
+        <div class="card-url">${esc(s.url)}</div>
+      </div>
+      <div class="card-right">
+        ${rt ? `<span class="rt-badge">${rt}</span>` : ''}
+        <span class="status-pill pill-${st}"><span class="dot"></span>${st}</span>
+      </div>
+    </div>
+    ${tags ? `<div class="tags">${tags}</div>` : ''}
+    <div class="uptime-row">
+      <div class="bars-wrap">${bars}</div>
+      <div class="uptime-pct${s.uptime!=null&&parseFloat(s.uptime)<95?' low':''}">${pct}</div>
+    </div>
+  </div>`;
+}
+
+
+function updateSummary() {
+  const total = services.length;
+  const up    = services.filter(s => s.currentStatus === 'up').length;
+  const down  = services.filter(s => ['down','degraded'].includes(s.currentStatus)).length;
+  const rts   = services.filter(s => s.currentResponseTime != null).map(s => s.currentResponseTime);
+  const avgRt = rts.length ? Math.round(rts.reduce((a,b) => a+b,0) / rts.length) : null;
+  document.getElementById('stat-total').textContent = total || '—';
+  document.getElementById('stat-up').textContent    = total ? up : '—';
+  document.getElementById('stat-down').textContent  = total ? down : '—';
+  document.getElementById('stat-rt').textContent    = avgRt != null ? avgRt + ' ms' : '—';
+  const badge = document.getElementById('overall-badge');
+  const txt   = document.getElementById('overall-text');
+  badge.className = '';
+  if (!total)                                              txt.textContent = 'No services';
+  else if (services.some(s => s.currentStatus === 'down'))  { badge.className = 'down';     txt.textContent = 'Major outage'; }
+  else if (services.some(s => s.currentStatus === 'degraded')){ badge.className = 'degraded'; txt.textContent = 'Degraded performance'; }
+  else                                                      txt.textContent = 'All systems operational';
+  const dot = document.querySelector('.logo-dot');
+  if (dot) dot.style.background = badge.className==='down' ? 'var(--red)' : badge.className==='degraded' ? 'var(--yellow)' : 'var(--green)';
+}
+
+async function deleteService(id) {
+  const svc = services.find(s => s.id === id);
+  if (!confirm(`Remove "${svc?.name}"?`)) return;
+  try {
+    await fetch('/api/services/' + id, { method: 'DELETE' });
+    services = services.filter(s => s.id !== id);
+    render(); toast('Service removed', 'ok');
+  } catch { toast('Failed to remove', 'err'); }
+}
+
+function openModal() {
+  pendingTags = [];
+  ['f-name','f-url','f-newcat'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-cat').value = 'General';
+  document.getElementById('new-cat-field').style.display = 'none';
+  document.getElementById('f-tag-input').value = '';
+  renderTagChips();
+  document.getElementById('overlay').classList.add('open');
+  setTimeout(() => document.getElementById('f-name').focus(), 100);
+}
+function closeModal() { document.getElementById('overlay').classList.remove('open'); }
+
+document.getElementById('f-cat').addEventListener('change', function() {
+  document.getElementById('new-cat-field').style.display = this.value === '__new__' ? 'block' : 'none';
+  if (this.value === '__new__') document.getElementById('f-newcat').focus();
+});
+
+document.getElementById('f-tag-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(e.target.value.trim().replace(/,/g,'')); e.target.value = ''; }
+  else if (e.key === 'Backspace' && !e.target.value && pendingTags.length) { pendingTags.pop(); renderTagChips(); }
+});
+
+document.getElementById('tags-wrap').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-tag]');
+  if (btn) { pendingTags = pendingTags.filter(x => x !== btn.dataset.tag); renderTagChips(); }
+});
+function addTag(t) { if (!t || pendingTags.includes(t)) return; pendingTags.push(t); renderTagChips(); }
+function renderTagChips() {
+  const wrap = document.getElementById('tags-wrap'), inp = document.getElementById('f-tag-input');
+  wrap.querySelectorAll('.tag-chip').forEach(el => el.remove());
+  pendingTags.forEach(t => {
+    const chip = document.createElement('span');
+    chip.className = 'tag-chip';
+    chip.innerHTML = esc(t) + `<button data-tag="${esc(t)}" aria-label="Remove tag">×</button>`;
+    wrap.insertBefore(chip, inp);
+  });
+}
+
+async function submitService() {
+  const name   = document.getElementById('f-name').value.trim();
+  const url    = document.getElementById('f-url').value.trim();
+  const catSel = document.getElementById('f-cat').value;
+  const cat    = catSel === '__new__' ? (document.getElementById('f-newcat').value.trim() || 'General') : catSel;
+  const rawTag = document.getElementById('f-tag-input').value.trim();
+  if (rawTag) addTag(rawTag);
+  if (!name) { toast('Name is required', 'err'); return; }
+  if (!url)  { toast('URL is required', 'err');  return; }
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = true; btn.textContent = 'Checking…';
+  try {
+    const r = await fetch('/api/services', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, url, category: cat, tags: pendingTags }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Error');
+    services.push(data); render(); closeModal(); toast('Added — ' + (data.currentStatus||'pending'), 'ok');
+  } catch(e) { toast(e.message, 'err'); }
+  finally { btn.disabled = false; btn.textContent = 'Add service'; }
+}
+
+document.querySelectorAll('#f-name,#f-url,#f-newcat').forEach(el =>
+  el.addEventListener('keydown', e => { if (e.key === 'Enter') submitService(); })
+);
+
+let toastTimer = null;
+function toast(msg, type='ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'show ' + type;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.className = ''; }, 3200);
+}
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ─── Response time chart ──────────────────────────────────────────────────────
+let rtChart = null;
+
+async function openChart(id, name) {
+  document.getElementById('chart-title').textContent = name + ' — Response time';
+  document.getElementById('cs-avg').textContent = '…';
+  document.getElementById('cs-min').textContent = '…';
+  document.getElementById('cs-max').textContent = '…';
+  document.getElementById('chart-overlay').classList.add('open');
+  try {
+    const d = await (await fetch(`/api/history/${id}`)).json();
+    const rows = (d.recent || []).filter(r => r.response_time != null).reverse();
+    const labels = rows.map(r => new Date(r.checked_at).toLocaleString('en-GB', { timeZone:'Europe/London', hour:'2-digit', minute:'2-digit' }));
+    const data   = rows.map(r => r.response_time);
+    const rts    = data.filter(Boolean);
+    const avg    = rts.length ? Math.round(rts.reduce((a,b) => a+b,0)/rts.length) : null;
+    const min    = rts.length ? Math.min(...rts) : null;
+    const max    = rts.length ? Math.max(...rts) : null;
+    document.getElementById('cs-avg').textContent = avg != null ? avg + ' ms' : '—';
+    document.getElementById('cs-min').textContent = min != null ? min + ' ms' : '—';
+    document.getElementById('cs-max').textContent = max != null ? max + ' ms' : '—';
+    if (rtChart) rtChart.destroy();
+    const ctx = document.getElementById('rt-chart').getContext('2d');
+    rtChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          data,
+          borderColor: '#7c5cfc',
+          backgroundColor: 'rgba(124,92,252,.08)',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.3,
+          fill: true,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.parsed.y + ' ms' } } },
+        scales: {
+          x: { ticks: { color: '#5a5a78', maxTicksLimit: 8, font: { size: 11 } }, grid: { color: 'rgba(255,255,255,.04)' } },
+          y: { ticks: { color: '#5a5a78', callback: v => v + ' ms', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,.06)' }, beginAtZero: true },
+        },
+      },
+    });
+  } catch(e) { toast('Failed to load chart', 'err'); }
+}
+
+function closeChart() {
+  document.getElementById('chart-overlay').classList.remove('open');
+  if (rtChart) { rtChart.destroy(); rtChart = null; }
+}
+
+function toggleNav() { document.getElementById('nav-drawer').classList.toggle('open'); document.getElementById('nav-overlay').classList.toggle('open'); }
+function closeNav()  { document.getElementById('nav-drawer').classList.remove('open');  document.getElementById('nav-overlay').classList.remove('open'); }
+
+// ─── Notify tab switcher ──────────────────────────────────────────────────────
+function switchNTab(tab) {
+  document.querySelectorAll('.ntab').forEach(b => b.classList.toggle('active', b.dataset.pane === tab));
+  ['email','discord','rss'].forEach(t => {
+    document.getElementById('np-' + t).style.display = t === tab ? '' : 'none';
+  });
+}
+
+// ─── Email subscription ────────────────────────────────────────────────────────
+async function submitSubscribe() {
+  const inp = document.getElementById('sub-email');
+  const btn = document.getElementById('sub-btn');
+  const email = inp.value.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('Enter a valid email address', 'err'); return; }
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  try {
+    const r = await fetch('/subscribe', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed');
+    inp.value = '';
+    toast('Confirmation email sent — check your inbox', 'ok');
+  } catch(e) { toast(e.message, 'err'); }
+  finally { btn.disabled = false; btn.textContent = 'Subscribe'; }
+}
+
+// ─── Discord webhook subscription ────────────────────────────────────────────
+async function submitDiscordWebhook() {
+  const inp = document.getElementById('sub-discord');
+  const btn = document.getElementById('sub-discord-btn');
+  const url = inp.value.trim();
+  if (!url.startsWith('https://discord.com/api/webhooks/') && !url.startsWith('https://discordapp.com/api/webhooks/')) {
+    toast('Enter a valid Discord webhook URL', 'err'); return;
+  }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const r = await fetch('/webhook-subscribe', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ url }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed');
+    inp.value = '';
+    toast('Discord webhook saved — you\'ll receive status alerts', 'ok');
+  } catch(e) { toast(e.message, 'err'); }
+  finally { btn.disabled = false; btn.textContent = 'Save'; }
+}
+
+// Handle ?sub= redirect from confirm/unsubscribe links
+(function() {
+  const p = new URLSearchParams(location.search);
+  const sub = p.get('sub');
+  if (sub === 'confirmed')    { toast('You\'re now subscribed to status alerts', 'ok'); }
+  else if (sub === 'unsubscribed') { toast('You have been unsubscribed', 'ok'); }
+  else if (sub === 'invalid')      { toast('That confirmation link is invalid or expired', 'err'); }
+  if (sub) history.replaceState({}, '', location.pathname);
+})();
+
+init();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
